@@ -1,62 +1,87 @@
 @echo off
 chcp 65001 > nul
 setlocal enabledelayedexpansion
-title 🔄 RESTAURADOR TOTAL TRAS FORMATEO (1 CLIC - 100% AUTOMATIZADO)
+title RESTAURADOR TOTAL TRAS FORMATEO (1 CLIC - 100% AUTOMATIZADO)
 
 echo =====================================================================
-echo  🔄 RESTAURADOR MAESTRO TRAS FORMATEO (CERO DOLOR DE CABEZA)
+echo   RESTAURADOR MAESTRO TRAS FORMATEO (CERO DOLOR DE CABEZA)
 echo =====================================================================
-echo  Este script dejará tu PC formateada 100% lista en 1 minuto:
+echo  Este script dejara tu PC formateada 100% lista en 1 minuto:
 echo   1. Instala Rclone oficial.
-echo   2. Instala Aria2c (Motor multi-hilo para ISOs/Torrents).
-echo   3. Instala WinFsp (Controlador de disco virtual Z:).
-echo   4. Instala GitHub CLI.
-echo   5. Crea el acceso directo del CENTRO DE DESCARGAS en tu Escritorio.
+echo   2. Instala GitHub CLI.
+echo   3. Instala Aria2c (Motor multi-hilo para ISOs/Torrents).
+echo   4. Instala WinFsp (Controlador de disco virtual Z:).
+echo   5. Restaura tus credenciales de Google Drive/OneDrive/Mega.
+echo   6. Crea el acceso directo del CENTRO DE DESCARGAS en tu Escritorio.
 echo =====================================================================
 echo.
 
-echo [1/4] Verificando Rclone...
+echo [1/5] Verificando Rclone...
 where rclone >nul 2>nul
 if %errorlevel% neq 0 (
     echo Instalando Rclone...
     winget install Rclone.Rclone --accept-source-agreements --accept-package-agreements >nul 2>nul
-    echo ✅ Rclone instalado.
+    echo [OK] Rclone instalado.
 ) else (
-    echo ✅ Rclone ya está disponible.
+    echo [OK] Rclone ya esta disponible.
 )
 
 echo.
-echo [2/4] Verificando Aria2c (Acelerador Multi-Segmento)...
+echo [2/5] Verificando GitHub CLI (gh)...
+where gh >nul 2>nul
+if %errorlevel% neq 0 (
+    echo Instalando GitHub CLI...
+    winget install GitHub.cli --accept-source-agreements --accept-package-agreements >nul 2>nul
+    echo [OK] GitHub CLI instalado.
+) else (
+    echo [OK] GitHub CLI ya esta disponible.
+)
+
+echo.
+echo [3/5] Verificando Aria2c (Acelerador Multi-Segmento)...
 where aria2c >nul 2>nul
 if %errorlevel% neq 0 (
     echo Instalando Aria2c...
     winget install aria2.aria2 --accept-source-agreements --accept-package-agreements >nul 2>nul
-    echo ✅ Aria2c instalado.
+    echo [OK] Aria2c instalado.
 ) else (
-    echo ✅ Aria2c ya está disponible.
+    echo [OK] Aria2c ya esta disponible.
 )
 
 echo.
-echo [3/4] Verificando WinFsp (Soporte de Disco Virtual Z:)...
+echo [4/5] Verificando WinFsp (Soporte de Disco Virtual Z:)...
 sc query WinFsp.Launcher >nul 2>nul
 if %errorlevel% neq 0 (
     echo Instalando WinFsp...
     winget install WinFsp.WinFsp --accept-source-agreements --accept-package-agreements >nul 2>nul
-    echo ✅ WinFsp instalado.
+    echo [OK] WinFsp instalado.
 ) else (
-    echo ✅ WinFsp ya está disponible.
+    echo [OK] WinFsp ya esta disponible.
 )
 
 echo.
-echo [4/4] Creando acceso directo en el Escritorio...
-powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut([Environment]::GetFolderPath('Desktop') + '\CENTRO DE DESCARGAS EXTREMO.lnk'); $Shortcut.TargetPath = '%~dp0CENTRO_DE_DESCARGAS_EXTREMO.bat'; $Shortcut.WorkingDirectory = '%~dp0'; $Shortcut.Description = 'Centro de Descargas y Transferencias Extremas'; $Shortcut.Save()"
-echo ✅ Acceso directo creado en tu Escritorio.
+echo [5/5] Restaurando credenciales de nubes...
+set "BACKUP_CONF=%~dp0backup_seguro\rclone.conf.bak"
+set "DEST_CONF=%APPDATA%\rclone\rclone.conf"
+if exist "%BACKUP_CONF%" (
+    if not exist "%APPDATA%\rclone" mkdir "%APPDATA%\rclone" 2>nul
+    copy /y "%BACKUP_CONF%" "%DEST_CONF%" >nul 2>nul
+    echo [OK] Credenciales restauradas automaticamente desde backup seguro.
+) else (
+    echo [i] Si no tienes backup local, usa 'conectar_cualquier_nube.bat' para vincular tus cuentas en 30s.
+)
+
+echo.
+echo Creando acceso directo en el Escritorio...
+powershell -NoProfile -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut([Environment]::GetFolderPath('Desktop') + '\CENTRO DE DESCARGAS EXTREMO.lnk'); $Shortcut.TargetPath = '%~dp0CENTRO_DE_DESCARGAS_EXTREMO.bat'; $Shortcut.WorkingDirectory = '%~dp0'; $Shortcut.Description = 'Centro de Descargas y Transferencias Extremas'; $Shortcut.Save()"
+echo [OK] Acceso directo creado en tu Escritorio.
 
 echo.
 echo =====================================================================
-echo 🎉 ¡RESTAURACIÓN COMPLETADA AL 100%!
-echo Puedes abrir directamente: 'CENTRO DE DESCARGAS EXTREMO' en tu Escritorio.
-echo Recuerda que tus credenciales VIP y la nube de 20 servidores siguen
-echo funcionando 24/7 en: https://github.com/JulioHVPalacios/mega-drive-cloner
+echo  RESTAURACION COMPLETADA AL 100%!
+echo  Tu PC formateada ya tiene todos los motores listos para funcionar.
+echo  Abre directamente: 'CENTRO DE DESCARGAS EXTREMO' en tu Escritorio.
+echo  Recuerda que la nube de Azure y los workflows de GitHub siguen
+echo  funcionando 24/7 de forma autonoma con tu PC apagada.
 echo =====================================================================
 pause
