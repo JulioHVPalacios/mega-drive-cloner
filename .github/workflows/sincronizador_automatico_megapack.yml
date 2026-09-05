@@ -103,3 +103,19 @@ jobs:
           echo "=========================================================="
           rclone size "$DST" --fast-list
           echo "=========================================================="
+
+      - name: 🔔 Notificación de Novedades a Telegram (Watchdog 24/7)
+        if: steps.check_changes.outputs.has_changes == 'true'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          if [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
+            CANTIDAD=$(wc -l < /tmp/diffs/nuevos.txt 2>/dev/null || echo "varios")
+            MSG="⚡ <b>¡NOVEDADES EN EL MEGAPACK!</b>%0A%0ASe detectaron <b>$CANTIDAD archivos/cursos nuevos</b> agregados por el dueño.%0A🎉 Ya han sido inyectados automáticamente en tu Google Drive en su carpeta correspondiente.%0A%0A🛡️ <i>Tu sistema sigue 100% al día con tu PC apagada.</i>"
+            curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
+              -d "chat_id=$TG_CHAT_ID" \
+              -d "parse_mode=HTML" \
+              -d "text=$MSG" > /dev/null || true
+            echo "✅ Alerta enviada a Telegram."
+          fi
