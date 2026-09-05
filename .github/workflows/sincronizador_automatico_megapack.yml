@@ -110,12 +110,41 @@ jobs:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          if [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT_ID" ]; then
-            CANTIDAD=$(wc -l < /tmp/diffs/nuevos.txt 2>/dev/null || echo "varios")
-            MSG="⚡ <b>¡NOVEDADES EN EL MEGAPACK!</b>%0A%0ASe detectaron <b>$CANTIDAD archivos/cursos nuevos</b> agregados por el dueño.%0A🎉 Ya han sido inyectados automáticamente en tu Google Drive en su carpeta correspondiente.%0A%0A🛡️ <i>Tu sistema sigue 100% al día con tu PC apagada.</i>"
-            curl -s -X POST "https://api.telegram.org/bot$TG_TOKEN/sendMessage" \
-              -d "chat_id=$TG_CHAT_ID" \
-              -d "parse_mode=HTML" \
-              -d "text=$MSG" > /dev/null || true
-            echo "✅ Alerta enviada a Telegram."
-          fi
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
+          import os, json, urllib.request
+
+          token = os.environ.get("TG_TOKEN")
+          chat_id = os.environ.get("TG_CHAT_ID")
+
+          if not token or not chat_id:
+              print("ℹ️ Telegram credentials not configured. Skipping.")
+              exit(0)
+
+          try:
+              with open("/tmp/diffs/nuevos.txt", "r", encoding="utf-8") as f:
+                  count = len(f.readlines())
+          except Exception:
+              count = "varios"
+
+          html_msg = (
+              "⚡ <b>¡NOVEDADES EN EL MEGAPACK!</b>\n\n"
+              f"Se detectaron <b>{count} archivos/cursos nuevos</b> agregados por el dueño.\n"
+              "🎉 Ya han sido inyectados automáticamente en tu Google Drive en su carpeta correspondiente.\n\n"
+              "🛡️ <i>Tu sistema sigue 100% al día con tu PC apagada.</i>"
+          )
+
+          data = json.dumps({
+              "chat_id": chat_id,
+              "text": html_msg,
+              "parse_mode": "HTML"
+          }).encode("utf-8")
+
+          url = f"https://api.telegram.org/bot{token}/sendMessage"
+          req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  if resp.status == 200:
+                      print("✅ Alerta enviada a Telegram con éxito.")
+          except Exception as e:
+              print(f"⚠️ Error al enviar Telegram: {e}")
+          EOF
