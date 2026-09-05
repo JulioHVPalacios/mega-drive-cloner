@@ -11,11 +11,11 @@ on:
       destination_account:
         description: 'Cuenta destino para la sincronización'
         required: true
-        default: 'midrive2 (Vexor 5TB)'
+        default: 'midrive (Julio)'
         type: choice
         options:
-          - 'midrive2 (Vexor 5TB)'
           - 'midrive (Julio)'
+          - 'midrive2 (Vexor 5TB)'
       sync_mode:
         description: 'Modo de Sincronización (100% Seguro y Blindado)'
         required: true
@@ -44,10 +44,10 @@ jobs:
         id: check_changes
         run: |
           SRC="gdrive:"
-          if [ "${{ inputs.destination_account }}" = "midrive (Julio)" ]; then
-            DST="midrive:MEGAPACK_PROGRAMACION_COMPLETO"
-          else
+          if [ "${{ inputs.destination_account }}" = "midrive2 (Vexor 5TB)" ]; then
             DST="midrive2:MEGAPACK_PROGRAMACION_COMPLETO"
+          else
+            DST="midrive:MEGAPACK_PROGRAMACION_COMPLETO"
           fi
 
           echo "Buscando si el dueño agregó cursos o modificó archivos..."
@@ -68,10 +68,10 @@ jobs:
         if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           SRC="gdrive:"
-          if [ "${{ inputs.destination_account }}" = "midrive (Julio)" ]; then
-            DST="midrive:MEGAPACK_PROGRAMACION_COMPLETO"
-          else
+          if [ "${{ inputs.destination_account }}" = "midrive2 (Vexor 5TB)" ]; then
             DST="midrive2:MEGAPACK_PROGRAMACION_COMPLETO"
+          else
+            DST="midrive:MEGAPACK_PROGRAMACION_COMPLETO"
           fi
 
           echo "🛡️ Modo estrictamente aditivo: SOLO COPIAR NUEVOS ARCHIVOS (CERO BORRADOS)."
