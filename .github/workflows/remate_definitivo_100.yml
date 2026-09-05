@@ -1,0 +1,209 @@
+name: 🚀 Remate Definitivo 100% Megapack
+
+on:
+  workflow_dispatch:
+
+jobs:
+  transferir_enjambre:
+    name: ⚡ ${{ matrix.nombre }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: "c01"
+            nombre: "IONIC 2 Y 3"
+            tipo: "curso_f8"
+            src_sub: "1 3-IONIC 2 Y IONIC 3 CREA APPS PARA ANDROID E IOS DESDE CERO"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/1 3-IONIC 2 Y IONIC 3 CREA APPS PARA ANDROID E IOS DESDE CERO" 
+          - id: "c02"
+            nombre: "10 PROYECTOS PORTAFOLIO"
+            tipo: "curso_f8"
+            src_sub: "10 PROYECTOS COMPLETOS PARA TU PORTAFOLIO DE PROGRAMADOR"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/10 PROYECTOS COMPLETOS PARA TU PORTAFOLIO DE PROGRAMADOR" 
+          - id: "c03"
+            nombre: "ANGULAR & SPRING BOOT"
+            tipo: "curso_f8"
+            src_sub: "ANGULAR & SPRING BOOT CREANDO WEB APP FULL STACK"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/ANGULAR & SPRING BOOT CREANDO WEB APP FULL STACK" 
+          - id: "c04"
+            nombre: "ANGULAR 14 GUIA COMPLETA"
+            tipo: "curso_f8"
+            src_sub: "ANGULAR 14 LA GUIA COMPLETA 15 PROYECTOS"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/ANGULAR 14 LA GUIA COMPLETA 15 PROYECTOS" 
+          - id: "c05"
+            nombre: "APLICATIVOS WEB PHP JS"
+            tipo: "curso_f8"
+            src_sub: "APLICATIVOS WEB - Desarrollo web con HTML, CSS, PHP, JavaScript, JQuery, AJAX y Materialize"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/APLICATIVOS WEB - Desarrollo web con HTML, CSS, PHP, JavaScript, JQuery, AJAX y Materialize" 
+          - id: "c06"
+            nombre: "BOOTSTRAP 5 Y SASS"
+            tipo: "curso_f8"
+            src_sub: "BOOTSTRAP 5 Y SASS - LA GUIA PRACTICA - CREA 10 SITIOS WEB"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/BOOTSTRAP 5 Y SASS - LA GUIA PRACTICA - CREA 10 SITIOS WEB" 
+          - id: "c07"
+            nombre: "KOTLIN Y MACHINE LEARNING"
+            tipo: "curso_f8"
+            src_sub: "CREA APPS CON KOTLIN Y MACHINE LEARNING EN ANDROID STUDIO"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/CREA APPS CON KOTLIN Y MACHINE LEARNING EN ANDROID STUDIO" 
+          - id: "c08"
+            nombre: "ECOMMERCE MEAN STACK"
+            tipo: "curso_f8"
+            src_sub: "CREA UN ECOMMERCE CON NODEJS + MONGODB + ANGULAR - MEAN"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/CREA UN ECOMMERCE CON NODEJS + MONGODB + ANGULAR - MEAN" 
+          - id: "c09"
+            nombre: "MESA DE AYUDA PHP MYSQL"
+            tipo: "curso_f8"
+            src_sub: "CREA UN SISTEMA DE MESA DE AYUDA CON PHP, MYSQL Y JS (MVC)"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/CREA UN SISTEMA DE MESA DE AYUDA CON PHP, MYSQL Y JS (MVC)" 
+          - id: "c10"
+            nombre: "SISTEMA ESCOLAR PHP"
+            tipo: "curso_f8"
+            src_sub: "CREA UN SISTEMA ESCOLAR CON PHP MYSQL JQUERY Y AJAX DESDE 0"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/CREA UN SISTEMA ESCOLAR CON PHP MYSQL JQUERY Y AJAX DESDE 0" 
+          - id: "c11"
+            nombre: "APP COMO UBER KOTLIN"
+            tipo: "curso_f8"
+            src_sub: "CREA UNA APP COMO UBER UTILIZANDO ANDROID STUDIO Y FIREBASE"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/CREA UNA APP COMO UBER UTILIZANDO ANDROID STUDIO Y FIREBASE" 
+          - id: "c12"
+            nombre: "WORDPRESS AUTO ADM"
+            tipo: "curso_f8"
+            src_sub: "CURSO COMPLETO DE WORDPRESS. TU WEB AUTO ADMINISTRABLE"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/CURSO COMPLETO DE WORDPRESS. TU WEB AUTO ADMINISTRABLE" 
+          - id: "c13"
+            nombre: "OPTIMIZACION SQL SERVER"
+            tipo: "curso_f8"
+            src_sub: "CURSO DE OPTIMIZACIÓN DE BASES DE DATOS EN SQL SERVER"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/CURSO DE OPTIMIZACIÓN DE BASES DE DATOS EN SQL SERVER" 
+          - id: "c14"
+            nombre: "SWIFT DESDE A PROYECTO"
+            tipo: "curso_f8"
+            src_sub: "CURSO DE SWIFT DESDE A PROYECTO"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/CURSO DE SWIFT DESDE A PROYECTO" 
+          - id: "c15"
+            nombre: "WEB SCRAPER PYTHON"
+            tipo: "curso_f8"
+            src_sub: "Codigo Facilito - Curso Web Scraper con Python"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/Codigo Facilito - Curso Web Scraper con Python" 
+          - id: "c16"
+            nombre: "APIS CON POSTMAN"
+            tipo: "curso_f8"
+            src_sub: "Crea y prueba tus APIs con Postman"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/Crea y prueba tus APIs con Postman" 
+          - id: "c17"
+            nombre: "AUTOMATIZACION PYTHON"
+            tipo: "curso_f8"
+            src_sub: "Curso Automatización de tareas con Python"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/Curso Automatización de tareas con Python" 
+          - id: "c18"
+            nombre: "REST CON NODEJS"
+            tipo: "curso_f8"
+            src_sub: "Curso para Desarrollar Servicios web REST con NodeJS"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/Curso para Desarrollar Servicios web REST con NodeJS" 
+          - id: "c19"
+            nombre: "TEMAS Y PLUGINS WORDPRESS"
+            tipo: "curso_f8"
+            src_sub: "DESARROLLO PROFESIONAL DE TEMAS Y PLUGINS DE WORDPRESS"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/DESARROLLO PROFESIONAL DE TEMAS Y PLUGINS DE WORDPRESS" 
+          - id: "c20"
+            nombre: "LOGICA PROGRAMACION EDTEAM"
+            tipo: "curso_f8"
+            src_sub: "EJERCICIOS DE LOGICA DE PROGRAMACION [EDTEAM]"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/EJERCICIOS DE LOGICA DE PROGRAMACION [EDTEAM]" 
+          - id: "c21"
+            nombre: "EJERCICIOS PYTHON NODEJS"
+            tipo: "curso_f8"
+            src_sub: "EJERCICIOS DE PROGRAMACIÓN CON PYTHON Y NODEJS"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/EJERCICIOS DE PROGRAMACIÓN CON PYTHON Y NODEJS" 
+          - id: "c22"
+            nombre: "PHOTOSHOP A WORDPRESS"
+            tipo: "curso_f8"
+            src_sub: "EXPERTO DE PHOTOSHOP A WORDPRESS CREANDO 2 THEMES PLANTILLAS"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/EXPERTO DE PHOTOSHOP A WORDPRESS CREANDO 2 THEMES PLANTILLAS" 
+          - id: "c23"
+            nombre: "CERTIFICADOS Y DIPLOMAS"
+            tipo: "curso_f8"
+            src_sub: "GENERACIÓN DE CERTIFICADOS Y DIPLOMAS CON PHP, MYSQL Y JS"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/GENERACIÓN DE CERTIFICADOS Y DIPLOMAS CON PHP, MYSQL Y JS" 
+          - id: "c24"
+            nombre: "ECOMMERCE SPRING BOOT"
+            tipo: "curso_f8"
+            src_sub: "PROYECTO ECOMMERCE CON SPRING BOOT Y ARQUITECTURA HEXAGONAL"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/PROYECTO ECOMMERCE CON SPRING BOOT Y ARQUITECTURA HEXAGONAL" 
+          - id: "c25"
+            nombre: "PRIMERA APP JS PYTHON"
+            tipo: "curso_f8"
+            src_sub: "TU PRIMERA APP CON JAVASCRIPT Y PYTHON [EDTEAM]"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/TU PRIMERA APP CON JAVASCRIPT Y PYTHON [EDTEAM]" 
+          - id: "c26"
+            nombre: "XAMARIN INTERMEDIO"
+            tipo: "curso_f8"
+            src_sub: "XAMARIN INTERMEDIO DISEÑOS PROFESIONALES"
+            dst_sub: "3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/XAMARIN INTERMEDIO DISEÑOS PROFESIONALES" 
+          - id: "carpeta2_sync"
+            nombre: "Carpeta 2 Sync Faltantes"
+            tipo: "sync_f2"
+            src_sub: "2.✴️🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗘 𝗣𝗥𝗢𝗚𝗥𝗔𝗠𝗔𝗖𝗜Ó𝗡 𝗗𝗘 𝗕Á𝗦𝗜𝗖𝗢 𝗔 𝗔𝗩𝗔𝗡𝗭𝗔𝗗𝗢🧠"
+            dst_sub: "2.✴️🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗘 𝗣𝗥𝗢𝗚𝗥𝗔𝗠𝗔𝗖𝗜Ó𝗡 𝗗𝗘 𝗕Á𝗦𝗜𝗖𝗢 𝗔 𝗔𝗩𝗔𝗡𝗭𝗔𝗗𝗢🧠" 
+          - id: "carpeta5_sync"
+            nombre: "Carpeta 5 Sync Faltantes"
+            tipo: "sync_f5"
+            src_sub: "5. NUEVAS ACTUALIZACIONES"
+            dst_sub: "5. NUEVAS ACTUALIZACIONES" 
+
+    steps:
+      - name: 🛠️ Instalar Rclone Oficial
+        run: |
+          sudo -v ; curl https://rclone.org/install.sh | sudo bash
+          mkdir -p ~/.config/rclone
+          cat << 'EOF' > ~/.config/rclone/rclone.conf
+          ${{ secrets.RCLONE_CONFIG }}
+          EOF
+
+      - name: 🚀 Transferir a Máxima Velocidad (Directo a midrive2)
+        run: |
+          if [ "${{ matrix.tipo }}" = "curso_f8" ]; then
+            SRC="midrive,root_folder_id=1div78uW-iUyTkzW-QXCGfPlYxgOzZ6te:${{ matrix.src_sub }}"
+          else
+            SRC="midrive,root_folder_id=1TCTh_B3E_ztPGOznWL75yrymywJrKLJl:${{ matrix.src_sub }}"
+          fi
+          
+          DST="midrive2:MEGAPACK_PROGRAMACION_COMPLETO/${{ matrix.dst_sub }}"
+          
+          echo "Iniciando transferencia de: ${{ matrix.nombre }}"
+          echo "Origen: $SRC"
+          echo "Destino: $DST"
+          
+          rclone copy "$SRC" "$DST" \
+            --fast-list \
+            --transfers=16 \
+            --checkers=32 \
+            --buffer-size=256M \
+            --use-mmap \
+            --retries=10 \
+            --low-level-retries=20 \
+            -v -P --stats 15s
+            
+          echo "✅ ${{ matrix.nombre }} completado con éxito."
+
+  auditoria_maestra_100:
+    name: 🏆 Auditoría de Cierre y Verificación 100%
+    needs: [transferir_enjambre]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛠️ Instalar Rclone
+        run: |
+          sudo -v ; curl https://rclone.org/install.sh | sudo bash
+          mkdir -p ~/.config/rclone
+          cat << 'EOF' > ~/.config/rclone/rclone.conf
+          ${{ secrets.RCLONE_CONFIG }}
+          EOF
+
+      - name: 📊 Conteo y Verificación Final
+        run: |
+          echo "=== TAMAÑO TOTAL DE MEGAPACK_PROGRAMACION_COMPLETO ==="
+          rclone size "midrive:MEGAPACK_PROGRAMACION_COMPLETO" --fast-list
+          echo "=== COMPARACIÓN CON ORIGEN ==="
+          rclone size "midrive,root_folder_id=1TCTh_B3E_ztPGOznWL75yrymywJrKLJl:" --fast-list
