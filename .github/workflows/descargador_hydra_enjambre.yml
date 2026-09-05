@@ -1,4 +1,4 @@
-name: 🐉 Descargador Hydra: Enjambre de Servidores en Paralelo (100 Gbps)
+name: '🐉 Descargador Hydra - Enjambre de Servidores en Paralelo (100 Gbps)'
 
 on:
   workflow_dispatch:
