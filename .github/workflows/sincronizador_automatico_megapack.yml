@@ -17,13 +17,12 @@ on:
           - 'midrive2 (Vexor 5TB)'
           - 'midrive (Julio)'
       sync_mode:
-        description: 'Modo de Sincronización'
+        description: 'Modo de Sincronización (100% Seguro y Blindado)'
         required: true
-        default: 'Aditivo Seguro (Solo copiar lo nuevo, nunca borrar nada)'
+        default: 'Aditivo Seguro (Solo copiar lo nuevo, CERO BORRADOS)'
         type: choice
         options:
-          - 'Aditivo Seguro (Solo copiar lo nuevo, nunca borrar nada)'
-          - 'Espejo Estricto (Igualar al 100% al origen, eliminar obsoletos)'
+          - 'Aditivo Seguro (Solo copiar lo nuevo, CERO BORRADOS)'
 
 jobs:
   sincronizar_megapack:
@@ -66,7 +65,7 @@ jobs:
           fi
 
       - name: 🚀 Sincronizar Automáticamente lo Nuevo
-        if: steps.check_changes.outputs.has_changes == 'true' || github.event_name == 'schedule'
+        if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           SRC="gdrive:"
           if [ "${{ inputs.destination_account }}" = "midrive (Julio)" ]; then
@@ -75,21 +74,16 @@ jobs:
             DST="midrive2:MEGAPACK_PROGRAMACION_COMPLETO"
           fi
 
-          ACTION="copy"
-          if [[ "${{ inputs.sync_mode }}" == *"Espejo"* ]]; then
-            ACTION="sync"
-          fi
-
-          echo "🚀 Ejecutando rclone $ACTION hacia $DST..."
-          rclone $ACTION "$SRC" "$DST" \
+          echo "🛡️ Modo estrictamente aditivo: SOLO COPIAR NUEVOS ARCHIVOS (CERO BORRADOS)."
+          rclone copy "$SRC" "$DST" \
             --fast-list \
             --update \
             --checksum \
-            --transfers=16 \
-            --checkers=32 \
-            --buffer-size=256M \
+            --transfers=12 \
+            --checkers=24 \
+            --buffer-size=64M \
             --use-mmap \
-            --drive-chunk-size=256M \
+            --drive-chunk-size=128M \
             --drive-server-side-across-configs=true \
             --retries=10 \
             --low-level-retries=20 \

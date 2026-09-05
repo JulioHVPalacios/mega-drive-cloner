@@ -13,18 +13,22 @@ echo.
 echo  [1] ⚡ Descargar CUALQUIER Enlace de Internet a tu PC (Torrents/ISOs/Mega/Web)
 echo  [2] 📥 Descargar Carpeta Completa de Google Drive a tu PC/Disco Externo
 echo  [3] 📂 Montar Google Drive como Disco Virtual (Z:) en Windows
-echo  [4] 🐉 Enviar al Enjambre Hydra en la Nube (PC Apagada / Celular)
-echo  [5] 🔄 Restaurar / Reparar Herramientas (Post-Formateo en 30s)
+echo  [4] 🚀 Descargador Universal a la Nube (Cualquier Link a Cualquier Nube - PC Apagada)
+echo  [5] 🐉 Enviar al Enjambre Hydra en la Nube (20 Servidores Azure)
+echo  [6] 🔄 Verificar Estado del Auto-Sincronizador Megapack (Watchdog)
+echo  [7] 🛠️ Restaurar / Reparar Herramientas (Post-Formateo en 30s)
 echo  [0] ❌ Salir
 echo.
 echo =====================================================================
-set /p OPCION="Selecciona una opción [0-5]: "
+set /p OPCION="Selecciona una opción [0-7]: "
 
 if "%OPCION%"=="1" goto DESCARGA_UNIVERSAL_LOCAL
 if "%OPCION%"=="2" goto CLONAR_DRIVE_A_LOCAL
 if "%OPCION%"=="3" goto MONTAR_DRIVE
-if "%OPCION%"=="4" goto LANZAR_ENJAMBRE
-if "%OPCION%"=="5" goto RESTAURAR_SISTEMA
+if "%OPCION%"=="4" goto DESCARGADOR_UNIVERSAL_CLOUD
+if "%OPCION%"=="5" goto LANZAR_ENJAMBRE
+if "%OPCION%"=="6" goto VERIFICAR_WATCHDOG
+if "%OPCION%"=="7" goto RESTAURAR_SISTEMA
 if "%OPCION%"=="0" exit /b
 goto MENU
 
@@ -129,10 +133,53 @@ echo ✅ Unidad Z: montada con éxito. Podrás ver tus archivos en 'Este equipo'
 pause
 goto MENU
 
+:DESCARGADOR_UNIVERSAL_CLOUD
+cls
+echo =====================================================================
+echo  🚀 [4] DESCARGADOR UNIVERSAL A LA NUBE (PC APAGADA)
+echo =====================================================================
+echo  Soporta: Torrents, Magnets, ISOs gigantes, Enlaces directos,
+echo           MEGA.nz, TeraBox, YouTube/Streams, Drive-to-Drive.
+echo.
+set /p ENLACE_URL="Pega aquí el enlace de origen: "
+if "%ENLACE_URL%"=="" goto MENU
+
+echo.
+echo ¿A qué nube deseas mandarlo?
+echo  [1] Google Drive (Rotación Inteligente: Julio + Vexor 10TB)
+echo  [2] Google Drive (Mi Unidad Principal - Julio)
+echo  [3] Google Drive (Unidad Auxiliar - Vexor)
+echo  [4] Microsoft OneDrive
+echo  [5] MEGA.nz personal
+echo  [6] Nube Desconocida / WebDAV / S3
+set /p DEST_SEL="Selecciona [1-6] (Default: 1): "
+set DEST_TARGET=Google Drive (Rotación Inteligente: Julio + Vexor 10TB)
+if "%DEST_SEL%"=="2" set DEST_TARGET=Google Drive (Mi Unidad Principal - Julio)
+if "%DEST_SEL%"=="3" set DEST_TARGET=Google Drive (Unidad Auxiliar - Vexor)
+if "%DEST_SEL%"=="4" set DEST_TARGET=Microsoft OneDrive (Aviso: Throttling 429)
+if "%DEST_SEL%"=="5" set DEST_TARGET=MEGA.nz
+if "%DEST_SEL%"=="6" set DEST_TARGET=Nube Desconocida / Genérica (WebDAV / AList / PikPak)
+
+echo.
+set /p CARPETA_DEST="Nombre de la carpeta de destino (Default: DESCARGAS_UNIVERSALES): "
+if "%CARPETA_DEST%"=="" set CARPETA_DEST=DESCARGAS_UNIVERSALES
+
+echo.
+echo 🚀 Transmitiendo orden a los servidores en la nube de Microsoft Azure...
+gh workflow run descargador_universal.yml --repo JulioHVPalacios/mega-drive-cloner -f source_url="%ENLACE_URL%" -f destination_target="%DEST_TARGET%" -f dest_folder="%CARPETA_DEST%" -f transfer_mode="Auto Streaming RAM Turbo (Zero Disco - Soporta 500GB/1TB/2TB)"
+echo.
+echo =====================================================================
+echo ✅ ¡ORDEN ENVIADA CON ÉXITO A LA NUBE!
+echo Ya puedes apagar tu PC por completo.
+echo El servidor en la nube transferirá los archivos a máxima velocidad.
+echo =====================================================================
+pause
+goto MENU
+
 :LANZAR_ENJAMBRE
 cls
 echo =====================================================================
-echo  🐉 [4] LANZAR ENJAMBRE HYDRA EN LA NUBE (20 SERVIDORES AZURE)
+echo  🐉 [5] LANZAR ENJAMBRE HYDRA EN LA NUBE (20 SERVIDORES AZURE)
 echo =====================================================================
 echo.
 set /p ENLACE_NUBE="Pega el enlace (Drive, OneDrive, TeraBox o Torrent): "
@@ -161,6 +208,29 @@ echo Ya puedes apagar tu PC o cerrar esta ventana si lo deseas.
 echo Los 20 servidores continuarán transfiriendo 24/7 en la nube.
 echo =====================================================================
 pause
+goto MENU
+
+:VERIFICAR_WATCHDOG
+cls
+echo =====================================================================
+echo  🔄 [6] ESTADO DEL AUTO-SINCRONIZADOR MEGAPACK (WATCHDOG 24/7)
+echo =====================================================================
+echo  Horarios programados: 04:00 AM y 12:00 PM (Hora local Perú/Col/Ecu)
+echo.
+echo 📊 Consultando últimas ejecuciones en GitHub Actions...
+gh run list --workflow=sincronizador_automatico_megapack.yml --repo JulioHVPalacios/mega-drive-cloner --limit 5
+echo.
+echo =====================================================================
+echo [1] Disparar verificación y sincronización AHORA en la nube
+echo [2] Volver al menú principal
+set /p WATCH_OP="Selecciona [1-2]: "
+if "%WATCH_OP%"=="1" (
+    echo.
+    echo 🚀 Lanzando verificación inmediata en la nube...
+    gh workflow run sincronizador_automatico_megapack.yml --repo JulioHVPalacios/mega-drive-cloner
+    echo ✅ ¡Disparado! Puedes revisar el avance con la opción 6 en unos segundos.
+    pause
+)
 goto MENU
 
 :RESTAURAR_SISTEMA

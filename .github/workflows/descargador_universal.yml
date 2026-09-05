@@ -46,14 +46,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
-      - name: 🛠️ Instalar Motores de Alta Velocidad Oficiales (Rclone, Aria2, Python3)
+      - name: 🛠️ Instalar Motores de Alta Velocidad Oficiales (Rclone, Aria2, Megatools, yt-dlp)
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y aria2 curl python3 python3-pip
+          sudo apt-get install -y aria2 curl python3 python3-pip megatools ffmpeg
+          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+          sudo chmod a+rx /usr/local/bin/yt-dlp
           curl https://rclone.org/install.sh | sudo bash
           echo "✅ Motores oficiales verificados:"
           rclone --version | head -n 2
           aria2c --version | head -n 1
+          megatools --version | head -n 1
+          yt-dlp --version
 
       - name: 🧹 Optimizar Espacio en Disco Temporal de Azure
         run: |
@@ -184,12 +188,12 @@ jobs:
           print(f'📦 Origen: {source}')
           print(f'⚡ Modo: {mode}')
 
-          # Banderas maestras de velocidad extrema y verificación criptográfica (Cero corrupción)
+          # Banderas maestras de velocidad extrema y verificación criptográfica (Cero corrupción y Cero OOM)
           turbo_flags = [
               '--fast-list',
-              '--transfers=32',
-              '--checkers=64',
-              '--buffer-size=256M',
+              '--transfers=16',
+              '--checkers=32',
+              '--buffer-size=64M',
               '--use-mmap',
               '--multi-thread-streams=16',
               '--multi-thread-cutoff=32M',
@@ -201,7 +205,7 @@ jobs:
 
           if 'midrive' in dest_remote:
               turbo_flags.extend([
-                  '--drive-chunk-size=256M',
+                  '--drive-chunk-size=128M',
                   '--drive-pacer-min-sleep=10ms',
                   '--drive-pacer-burst=200'
               ])
@@ -237,12 +241,40 @@ jobs:
                   source
               ]
               subprocess.run(aria_cmd, check=True)
-              print('📤 Subiendo enjambre hacia la nube destino con chunks de 256MB...')
+              print('📤 Subiendo enjambre hacia la nube destino con chunks de 128MB...')
               cmd1 = ['rclone', 'copy', '/tmp/torrent_downloads', dest_remote] + turbo_flags + ['-P', '-v']
               cmd2 = ['rclone', 'copy', '/tmp/torrent_downloads', fallback_remote] + turbo_flags + ['-P', '-v'] if fallback_remote else None
               run_with_failover(cmd1, cmd2)
 
-          # CASO 2: Google Drive a Google Drive (Server-Side Direct)
+          # CASO 2: Enlaces de MEGA.nz (Archivos o Carpetas Públicas)
+          elif 'mega.nz/' in source:
+              print('🔴 Detectado enlace MEGA.nz. Iniciando descarga con Megatools nativo...')
+              os.makedirs('/tmp/mega_downloads', exist_ok=True)
+              mega_cmd = ['megatools', 'dl', '--path', '/tmp/mega_downloads', source]
+              subprocess.run(mega_cmd, check=True)
+              print('📤 Subiendo contenido de MEGA hacia tu nube destino...')
+              cmd1 = ['rclone', 'copy', '/tmp/mega_downloads', dest_remote] + turbo_flags + ['-P', '-v']
+              cmd2 = ['rclone', 'copy', '/tmp/mega_downloads', fallback_remote] + turbo_flags + ['-P', '-v'] if fallback_remote else None
+              run_with_failover(cmd1, cmd2)
+
+          # CASO 3: Streams de Video Multimedia (YouTube, Vimeo, Twitch, HLS, .m3u8, .mpd)
+          elif any(k in source.lower() for k in ['youtube.com', 'youtu.be', 'vimeo.com', '.m3u8', '.mpd', 'twitch.tv']):
+              print('🎬 Detectado stream de video / multimedia. Descargando con yt-dlp Turbo...')
+              os.makedirs('/tmp/stream_downloads', exist_ok=True)
+              ytdlp_cmd = [
+                  'yt-dlp',
+                  '--concurrent-fragments', '16',
+                  '--buffer-size', '64K',
+                  '-o', '/tmp/stream_downloads/%(title)s.%(ext)s',
+                  source
+              ]
+              subprocess.run(ytdlp_cmd, check=True)
+              print('📤 Subiendo video(s) hacia tu nube destino...')
+              cmd1 = ['rclone', 'copy', '/tmp/stream_downloads', dest_remote] + turbo_flags + ['-P', '-v']
+              cmd2 = ['rclone', 'copy', '/tmp/stream_downloads', fallback_remote] + turbo_flags + ['-P', '-v'] if fallback_remote else None
+              run_with_failover(cmd1, cmd2)
+
+          # CASO 4: Google Drive a Google Drive (Server-Side Direct)
           elif ('drive.google.com' in source or (len(source) in [33, 44] and not source.startswith('http'))) and ('midrive' in dest_remote):
               m = re.search(r'[-\w]{25,}', source)
               fid = m.group(0) if m else source
@@ -261,9 +293,8 @@ jobs:
               ] + turbo_flags + ['-P', '-v', '--stats', '15s'] if fallback_remote else None
               run_with_failover(cmd1, cmd2)
 
-          # CASO 3: Enlaces HTTP/HTTPS Directos (ISOs de 500GB en Foros, TeraBox, Servidores Web)
+          # CASO 5: Enlaces HTTP/HTTPS Directos (ISOs gigantes en Foros, TeraBox, Servidores Web)
           elif source.startswith('http://') or source.startswith('https://'):
-              # Detección de TeraBox
               if any(k in source.lower() for k in ['terabox', '1024tera', 'mirrobox', '4funbox']):
                   print('📦 Detectado enlace TeraBox. Preparando ingestión directa...')
 
@@ -303,7 +334,7 @@ jobs:
                   cmd2 = ['rclone', 'copy', '/tmp/aria_downloads', fallback_remote] + turbo_flags + ['-P', '-v'] if fallback_remote else None
                   run_with_failover(cmd1, cmd2)
 
-          # CASO 4: Origen Remoto Genérico Rclone
+          # CASO 6: Origen Remoto Genérico Rclone
           else:
               print(f'📦 Transferencia genérica desde: {source}')
               cmd1 = ['rclone', 'copy', source, dest_remote] + turbo_flags + ['-P', '-v']
