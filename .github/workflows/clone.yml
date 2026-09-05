@@ -2,8 +2,6 @@ name: Ultra Speed Cloud Transfer & Audit
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main, master ]
 
 jobs:
   cloud_transfer:
