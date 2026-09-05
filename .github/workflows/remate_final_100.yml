@@ -1,0 +1,76 @@
+name: 🏁 Remate Final 100% (midrive -> midrive2)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  transferir_curso:
+    name: ⚡ ${{ matrix.nombre }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - nombre: "Curso JavaServer Faces"
+            path: "Curso JavaServer Faces"
+          - nombre: "MÁSTER EN C# XAMARIN"
+            path: "MÁSTER EN C# XAMARIN, BLAZOR, BASES DE DATOS"
+          - nombre: "SISTEMA DE ASISTENCIAS EN C#"
+            path: "SISTEMA DE ASISTENCIAS EN C# Y SQLSERVER DESDE 0"
+          - nombre: "TIENDA ONLINE CON ANGULAR"
+            path: "TIENDA ONLINE CON ANGULAR"
+          - nombre: "UDEMY - CALENDARIO WEB"
+            path: "UDEMY - CALENDARIO WEB CON FULL CALENDAR , PHP Y MYSQL"
+          - nombre: "UDEMY - SISTEMA WEB POS"
+            path: "UDEMY - DESARROLLA UN SISTEMA WEB POS DESDE CERO CON PHP NATIVO"
+          - nombre: "TIENDA VIRTUAL BOOTSTRAP"
+            path: "CREAR UNA TIENDA VIRTUAL CON BOOSTRAP  JAVASCRIPT PHP MYSQL"
+          - nombre: "APIs con Python"
+            path: "Codigo Facilito - Curso para consumir APIs con Python"
+          - nombre: "WEB APIS RESTFUL ASP.NET"
+            path: "CONSTRUYENDO WEB APIS RESTFUL CON ASP.NET CORE 6"
+
+    steps:
+      - name: 🛠️ Instalar Rclone y Configuracion
+        run: |
+          sudo -v ; curl https://rclone.org/install.sh | sudo bash
+          mkdir -p ~/.config/rclone
+          cat << 'EOF' > ~/.config/rclone/rclone.conf
+          ${{ secrets.RCLONE_CONFIG }}
+          EOF
+
+      - name: 🚀 Transferir a Maxima Velocidad
+        run: |
+          SRC="midrive,root_folder_id=1div78uW-iUyTkzW-QXCGfPlYxgOzZ6te:${{ matrix.path }}"
+          DST="midrive2:MEGAPACK_PROGRAMACION_COMPLETO/3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠/${{ matrix.path }}"
+          echo "Iniciando transferencia de: ${{ matrix.nombre }}"
+          rclone copy "$SRC" "$DST" \
+            --fast-list \
+            --transfers=16 \
+            --checkers=32 \
+            --buffer-size=256M \
+            --use-mmap \
+            --retries=10 \
+            --low-level-retries=20 \
+            -v -P --stats 10s
+          echo "✅ ${{ matrix.nombre }} completado con exito."
+
+  auditoria_final:
+    name: 🏆 Auditoria Forense y Verificacion 100%
+    needs: [transferir_curso]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛠️ Instalar Rclone
+        run: |
+          sudo -v ; curl https://rclone.org/install.sh | sudo bash
+          mkdir -p ~/.config/rclone
+          cat << 'EOF' > ~/.config/rclone/rclone.conf
+          ${{ secrets.RCLONE_CONFIG }}
+          EOF
+
+      - name: 📊 Medir Tamano Total Consolidado en midrive
+        run: |
+          echo "=== TAMANO TOTAL DE MEGAPACK_PROGRAMACION_COMPLETO ==="
+          rclone size "midrive:MEGAPACK_PROGRAMACION_COMPLETO" --fast-list
+          echo "=== CONTEO EN CARPETA 8 ==="
+          rclone size "midrive:MEGAPACK_PROGRAMACION_COMPLETO/3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠" --fast-list
