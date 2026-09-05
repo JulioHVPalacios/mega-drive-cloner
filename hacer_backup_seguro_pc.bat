@@ -21,8 +21,13 @@ if not exist "%CONF_SOURCE%" (
 
 if not exist "%BACKUP_DIR%" mkdir "%BACKUP_DIR%" 2>nul
 copy /y "%CONF_SOURCE%" "%BACKUP_FILE%" >nul 2>nul
+(
+    echo TELEGRAM_BOT_TOKEN=8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI
+    echo TELEGRAM_CHAT_ID=1136933800
+) > "%BACKUP_DIR%\telegram.env" 2>nul
 echo [1/2] Copia local guardada con exito en:
 echo       %BACKUP_FILE%
+echo       %BACKUP_DIR%\telegram.env
 echo       (Esta carpeta esta protegida y excluida de Git).
 
 echo.
