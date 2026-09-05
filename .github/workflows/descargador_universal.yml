@@ -1,0 +1,101 @@
+name: Descargador Universal a Google Drive
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_url:
+        description: 'Enlace o URL de Origen (Google Drive, Enlace Directo HTTP/HTTPS, etc.)'
+        required: true
+        type: string
+      dest_folder:
+        description: 'Nombre de la Carpeta en tu Google Drive (Mi Unidad)'
+        required: true
+        default: 'DESCARGAS_NUBE'
+        type: string
+
+jobs:
+  descarga_universal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar Herramientas de Alta Velocidad (Rclone y Aria2)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y aria2
+          curl https://rclone.org/install.sh | sudo bash
+
+      - name: Configurar Credenciales de Google Drive
+        env:
+          RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
+          echo "✅ Remotes verificados:"
+          rclone listremotes
+
+      - name: Procesar y Clonar hacia Google Drive
+        env:
+          SOURCE_URL: ${{ inputs.source_url }}
+          DEST_FOLDER: ${{ inputs.dest_folder }}
+        run: |
+          python3 -c "
+          import os, re, subprocess, sys
+
+          source = os.environ.get('SOURCE_URL', '').strip()
+          dest = os.environ.get('DEST_FOLDER', '').strip()
+          dest_remote = f'midrive:{dest}'
+
+          print(f'🚀 Iniciando transferencia hacia: {dest_remote}')
+
+          # Caso 1: Google Drive URL o ID
+          gdrive_match = re.search(r'[-\w]{25,}', source)
+          if 'drive.google.com' in source or (gdrive_match and len(source) < 50):
+              folder_id = gdrive_match.group(0)
+              print(f'📁 Detectado Google Drive con ID: {folder_id}')
+              cmd = [
+                  'rclone', 'copy',
+                  f':drive,root_folder_id={folder_id}:',
+                  dest_remote,
+                  '--drive-server-side-across-configs=true',
+                  '--fast-list',
+                  '--transfers=32',
+                  '--checkers=64',
+                  '--drive-pacer-min-sleep=10ms',
+                  '--drive-pacer-burst=100',
+                  '-P', '-v', '--stats', '15s'
+              ]
+              subprocess.run(cmd, check=True)
+
+          # Caso 2: Enlace Web Directo (HTTP/HTTPS)
+          elif source.startswith('http://') or source.startswith('https://'):
+              print('🌐 Detectado enlace web directo HTTP/HTTPS')
+              cmd = [
+                  'rclone', 'copyurl',
+                  source,
+                  dest_remote,
+                  '--auto-filename',
+                  '-P', '-v'
+              ]
+              subprocess.run(cmd, check=True)
+
+          # Caso 3: Protocolo directo o remote rclone
+          else:
+              print(f'📦 Transferencia genérica de origen: {source}')
+              cmd = [
+                  'rclone', 'copy',
+                  source,
+                  dest_remote,
+                  '--fast-list',
+                  '--transfers=32',
+                  '-P', '-v'
+              ]
+              subprocess.run(cmd, check=True)
+
+          print('✅ Transferencia finalizada exitosamente.')
+          "
+
+      - name: Auditoría y Resumen Final
+        env:
+          DEST_FOLDER: ${{ inputs.dest_folder }}
+        run: |
+          echo "📊 Resumen de lo copiado en tu Google Drive:"
+          rclone size "midrive:${{ inputs.dest_folder }}" --fast-list
