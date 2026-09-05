@@ -222,7 +222,7 @@ jobs:
               print(f'📁 Clonando Server-Side interno Google con ID: {fid}')
               cmd = [
                   'rclone', 'copy',
-                  f':drive,root_folder_id={fid}:',
+                  f'midrive,root_folder_id={fid}:',
                   dest_remote,
                   '--drive-server-side-across-configs=true'
               ] + turbo_flags + ['-P', '-v', '--stats', '15s']

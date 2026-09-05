@@ -130,7 +130,7 @@ jobs:
               turbo_flags.extend(['--onedrive-chunk-size=250M'])
 
           if is_drive:
-              src_remote = f':drive,root_folder_id={source_id}:'
+              src_remote = f'midrive,root_folder_id={source_id}:'
               print(f'🐉 Servidor #{shard} iniciando extracción de bloque {shard}/{total} desde Drive...')
               # Listar subdirectorios de primer nivel y filtrar según hash modular
               subdirs_raw = subprocess.check_output(['rclone', 'lsf', src_remote, '--dirs-only']).decode().splitlines()
