@@ -18,11 +18,12 @@ echo  [5] Enjambre Hydra en la Nube (20 Servidores Azure para Carpetas Gigantes)
 echo  [6] Consultar Estado del Auto-Sincronizador Megapack (Watchdog 24/7)
 echo  [7] Hacer Copia de Seguridad Segura (Antes de Formatear)
 echo  [8] Restaurar Todo el Sistema tras Formateo (1 Clic en 30s)
+echo  [9] Iniciar Bot de Telegram (@VexorOmniBot) en Tiempo Real
 echo  [0] Salir
 echo.
 echo =====================================================================
 set "OPCION="
-set /p "OPCION=Selecciona una opcion [0-8]: "
+set /p "OPCION=Selecciona una opcion [0-9]: "
 
 if not defined OPCION exit /b
 if "%OPCION%"=="0" exit /b
@@ -34,6 +35,7 @@ if "%OPCION%"=="5" goto LANZAR_ENJAMBRE
 if "%OPCION%"=="6" goto VERIFICAR_WATCHDOG
 if "%OPCION%"=="7" goto BACKUP_SISTEMA
 if "%OPCION%"=="8" goto RESTAURAR_SISTEMA
+if "%OPCION%"=="9" goto INICIAR_BOT_TELEGRAM
 goto MENU
 
 :DESCARGA_UNIVERSAL_LOCAL
@@ -209,4 +211,9 @@ goto MENU
 :RESTAURAR_SISTEMA
 cls
 call "%~dp0restaurar_tras_formateo.bat"
+goto MENU
+
+:INICIAR_BOT_TELEGRAM
+cls
+call "%~dp0iniciar_bot_telegram_pc.bat"
 goto MENU

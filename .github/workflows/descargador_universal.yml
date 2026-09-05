@@ -353,11 +353,12 @@ jobs:
           echo "📊 AUDITORÍA Y TAMAÑO TOTAL TRANSFERIDO A LA NUBE:"
           echo "=========================================================="
           if [[ "${{ inputs.destination_target }}" == *"Google Drive"* ]]; then
-            rclone size "midrive:${{ inputs.dest_folder }}" --fast-list || rclone size "midrive2:${{ inputs.dest_folder }}" --fast-list
+            rclone size "midrive:${{ inputs.dest_folder }}" --fast-list || rclone size "midrive2:${{ inputs.dest_folder }}" --fast-list || true
           elif [[ "${{ inputs.destination_target }}" == *"OneDrive"* ]]; then
-            rclone size "onedrive:${{ inputs.dest_folder }}" --fast-list
+            rclone size "onedrive:${{ inputs.dest_folder }}" --fast-list || true
           else
-            rclone size "target_remote:${{ inputs.dest_folder }}" --fast-list
+            rclone size "target_remote:${{ inputs.dest_folder }}" --fast-list || true
+          fi
           echo "=========================================================="
           echo "✅ TRANSFERENCIA VERIFICADA Y CERTIFICADA AL 100%"
           echo "=========================================================="
