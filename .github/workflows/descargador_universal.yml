@@ -55,8 +55,12 @@ jobs:
 
       - name: 🧹 Optimizar Espacio en Disco Temporal de Azure
         run: |
-          # Libera hasta 35GB de espacio en caso de uso de buffers locales para torrents
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc || true
+          if [[ "${{ inputs.transfer_mode }}" == *"Torrent"* ]]; then
+            echo "🧲 Modo Torrent detectado: liberando espacio en disco..."
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc || true
+          else
+            echo "⚡ Modo Streaming RAM: no requiere limpieza de disco."
+          fi
           df -h /
 
       - name: 🔐 Inyectar y Configurar Remotos Seguros
@@ -229,13 +233,15 @@ jobs:
               if 'Streaming RAM' in mode:
                   print('🌊 Activando Streaming en Memoria RAM con Chunks Turbo (Zero Disco)...')
                   print('🚀 Este modo transfiere ISOs gigantes de 500GB/1TB/2TB directo a tu nube!')
+                  http_flags = [f for f in turbo_flags if f != '--checksum']
                   cmd = [
                       'rclone', 'copyurl',
                       source,
                       dest_remote,
                       '--auto-filename',
-                      '--header-filename'
-                  ] + turbo_flags + ['-P', '-v', '--stats', '15s']
+                      '--header-filename',
+                      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                  ] + http_flags + ['-P', '-v', '--stats', '15s']
                   subprocess.run(cmd, check=True)
               else:
                   print('⚡ Descargando con acelerador Aria2c multi-conexión (16 hilos)...')
