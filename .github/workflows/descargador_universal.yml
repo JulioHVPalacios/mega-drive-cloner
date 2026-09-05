@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       source_url:
-        description: '🔗 Enlace de Origen (HTTP/HTTPS, ISO de Foro, Drive, Mega, Magnet/Torrent, etc.)'
+        description: '1️⃣ [OBLIGATORIO] Pega aquí tu enlace (HTTP, ISO de foro, Google Drive, Mega o Torrent)'
         required: true
         type: string
       destination_target:
-        description: '🎯 Nube de Destino'
+        description: '2️⃣ [ELIGE DESTINO] ¿A dónde mandarlo? (Google Drive o OneDrive ya están listos)'
         required: true
         default: 'Google Drive (Mi Unidad)'
         type: choice
@@ -20,17 +20,17 @@ on:
           - 'Servidor Remoto (FTP / SFTP)'
           - 'MEGA.nz'
       dest_folder:
-        description: '📁 Carpeta de Destino en tu Nube'
+        description: '3️⃣ [CARPETA] Nombre de la carpeta en tu nube (ej: Mis_ISOS o Cursos_2026)'
         required: true
         default: 'DESCARGAS_UNIVERSALES'
         type: string
       custom_credentials:
-        description: '🔑 Credenciales Nube Externa (Opcional si usas Google Drive o OneDrive)'
+        description: '4️⃣ [¡DEJAR EN BLANCO!] (Solo se llena si elegiste una nube desconocida o externa)'
         required: false
         default: ''
         type: string
       transfer_mode:
-        description: '⚡ Modo de Transferencia'
+        description: '5️⃣ [NO TOCAR] Ya viene calibrado en velocidad extrema (Auto Streaming RAM Turbo)'
         required: true
         default: 'Auto Streaming RAM Turbo (Zero Disco - Soporta 500GB/1TB/2TB)'
         type: choice

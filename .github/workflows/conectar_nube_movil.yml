@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       cloud_type:
-        description: 'Tipo de Nube'
+        description: '1️⃣ [TIPO] Elige el tipo de nube (WebDAV, MEGA, S3 o FTP)'
         required: true
         default: 'WebDAV (InfiniCLOUD, TeraBox, pCloud, Nextcloud, etc.)'
         type: choice
@@ -14,20 +14,20 @@ on:
           - 'Almacenamiento S3 (Wasabi, Cloudflare R2, Backblaze B2)'
           - 'Servidor FTP / SFTP'
       cloud_name:
-        description: 'Nombre para identificar tu nube (ej: mi_nube, terabox, infinicloud)'
+        description: '2️⃣ [NOMBRE] Elige un apodo para tu nube (ej: mi_terabox, infinicloud)'
         required: true
         default: 'mi_nube'
         type: string
       server_url:
-        description: 'URL del servidor (para WebDAV o S3) o Host (para FTP)'
+        description: '3️⃣ [DIRECCIÓN / URL] Enlace del servidor (ej: https://dav.ejemplo.com/)'
         required: true
         type: string
       username:
-        description: 'Usuario o Correo electrónico'
+        description: '4️⃣ [USUARIO] Tu correo o usuario de esa nube'
         required: true
         type: string
       password:
-        description: 'Contraseña o App Password'
+        description: '5️⃣ [CONTRASEÑA] Tu clave o contraseña de aplicación'
         required: true
         type: string
 
