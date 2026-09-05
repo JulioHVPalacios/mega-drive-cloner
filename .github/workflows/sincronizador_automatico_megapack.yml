@@ -1,0 +1,109 @@
+name: 🔄 Sincronizador Automático Megapack (Auto-Update Watchdog)
+
+on:
+  schedule:
+    # Se ejecuta automáticamente todos los días a las 04:00 UTC (100% PC Apagada)
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      destination_account:
+        description: 'Cuenta destino para la sincronización'
+        required: true
+        default: 'midrive2 (Vexor 5TB)'
+        type: choice
+        options:
+          - 'midrive2 (Vexor 5TB)'
+          - 'midrive (Julio)'
+      sync_mode:
+        description: 'Modo de Sincronización'
+        required: true
+        default: 'Aditivo Seguro (Solo copiar lo nuevo, nunca borrar nada)'
+        type: choice
+        options:
+          - 'Aditivo Seguro (Solo copiar lo nuevo, nunca borrar nada)'
+          - 'Espejo Estricto (Igualar al 100% al origen, eliminar obsoletos)'
+
+jobs:
+  sincronizar_megapack:
+    name: 🛰️ Monitoreo y Auto-Actualización Desatendida (PC Apagada)
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: 🛠️ Instalar Rclone Oficial
+        run: |
+          sudo -v ; curl https://rclone.org/install.sh | sudo bash
+          mkdir -p ~/.config/rclone
+          cat << 'EOF' > ~/.config/rclone/rclone.conf
+          ${{ secrets.RCLONE_CONFIG }}
+          EOF
+          echo "✅ Rclone configurado y listo."
+
+      - name: 🔍 Detectar Cambios en el Megapack Compartido
+        id: check_changes
+        run: |
+          SRC="gdrive:"
+          if [ "${{ inputs.destination_account }}" = "midrive (Julio)" ]; then
+            DST="midrive:MEGAPACK_PROGRAMACION_COMPLETO"
+          else
+            DST="midrive2:MEGAPACK_PROGRAMACION_COMPLETO"
+          fi
+
+          echo "Buscando si el dueño agregó cursos o modificó archivos..."
+          mkdir -p /tmp/diffs
+          rclone check "$SRC" "$DST" --one-way --missing-on-dst /tmp/diffs/nuevos.txt --fast-list || true
+          
+          if [ -s /tmp/diffs/nuevos.txt ]; then
+            CANTIDAD=$(wc -l < /tmp/diffs/nuevos.txt)
+            echo "⚡ ¡Se detectaron $CANTIDAD archivos/cursos nuevos en el origen!"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            head -n 20 /tmp/diffs/nuevos.txt
+          else
+            echo "✅ El Megapack ya está 100% al día. No hay archivos nuevos por descargar."
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 🚀 Sincronizar Automáticamente lo Nuevo
+        if: steps.check_changes.outputs.has_changes == 'true' || github.event_name == 'schedule'
+        run: |
+          SRC="gdrive:"
+          if [ "${{ inputs.destination_account }}" = "midrive (Julio)" ]; then
+            DST="midrive:MEGAPACK_PROGRAMACION_COMPLETO"
+          else
+            DST="midrive2:MEGAPACK_PROGRAMACION_COMPLETO"
+          fi
+
+          ACTION="copy"
+          if [[ "${{ inputs.sync_mode }}" == *"Espejo"* ]]; then
+            ACTION="sync"
+          fi
+
+          echo "🚀 Ejecutando rclone $ACTION hacia $DST..."
+          rclone $ACTION "$SRC" "$DST" \
+            --fast-list \
+            --update \
+            --checksum \
+            --transfers=16 \
+            --checkers=32 \
+            --buffer-size=256M \
+            --use-mmap \
+            --drive-chunk-size=256M \
+            --drive-server-side-across-configs=true \
+            --retries=10 \
+            --low-level-retries=20 \
+            -v -P --stats 15s
+
+          echo "🎉 ¡Sincronización completada exitosamente!"
+
+      - name: 📊 Auditoría y Verificación de Cierre
+        run: |
+          if [ "${{ inputs.destination_account }}" = "midrive (Julio)" ]; then
+            DST="midrive:MEGAPACK_PROGRAMACION_COMPLETO"
+          else
+            DST="midrive2:MEGAPACK_PROGRAMACION_COMPLETO"
+          fi
+          echo "=========================================================="
+          echo "📊 TAMAÑO ACTUALIZADO DE TU MEGAPACK:"
+          echo "=========================================================="
+          rclone size "$DST" --fast-list
+          echo "=========================================================="
