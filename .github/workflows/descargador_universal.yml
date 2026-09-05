@@ -78,7 +78,7 @@ jobs:
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
 
-          python3 - << 'EOF'
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
           import os, subprocess, re
 
           target = os.environ.get('DEST_TARGET', '')
@@ -153,7 +153,7 @@ jobs:
           DEST_FOLDER: ${{ inputs.dest_folder }}
           TRANSFER_MODE: ${{ inputs.transfer_mode }}
         run: |
-          python3 - << 'EOF'
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
           import os, re, subprocess, sys, shutil
 
           source = os.environ.get('SOURCE_URL', '').strip()

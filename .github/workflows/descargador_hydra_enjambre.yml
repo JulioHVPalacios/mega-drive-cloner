@@ -54,7 +54,7 @@ jobs:
           SOURCE_URL: ${{ inputs.source_url }}
           NODES_COUNT: ${{ inputs.swarm_nodes }}
         run: |
-          python3 - << 'EOF'
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
           import os, json, re, subprocess
 
           source = os.environ.get('SOURCE_URL', '').strip()
@@ -105,7 +105,7 @@ jobs:
           DEST_TARGET: ${{ inputs.destination_target }}
           DEST_FOLDER: ${{ inputs.dest_folder }}
         run: |
-          python3 - << 'EOF'
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
           import os, subprocess, sys
 
           shard = int(os.environ.get('SHARD_ID', '0'))
