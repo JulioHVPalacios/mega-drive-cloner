@@ -2,8 +2,10 @@ name: 🔄 Sincronizador Automático Megapack (Auto-Update Watchdog)
 
 on:
   schedule:
-    # Se ejecuta automáticamente todos los días a las 04:00 UTC (100% PC Apagada)
-    - cron: '0 4 * * *'
+    # Se ejecuta dos veces al día de forma 100% desatendida (PC Apagada):
+    # 1) 04:00 AM hora local Perú/Colombia/Ecuador (09:00 UTC)
+    # 2) 12:00 PM mediodía hora local (17:00 UTC)
+    - cron: '0 9,17 * * *'
   workflow_dispatch:
     inputs:
       destination_account:
