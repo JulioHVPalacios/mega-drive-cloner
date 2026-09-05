@@ -70,12 +70,9 @@ jobs:
           matrix_json = json.dumps(matrix_obj)
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write(f'matrix_config={matrix_json}
-')
-              f.write(f'is_drive={is_drive}
-')
-              f.write(f'source_id={source_id}
-')
+              f.write(f'matrix_config={matrix_json}\n')
+              f.write(f'is_drive={is_drive}\n')
+              f.write(f'source_id={source_id}\n')
 
           print(f'✅ Enjambre Hydra configurado con {nodes} servidores simultáneos.')
           EOF
@@ -140,7 +137,6 @@ jobs:
               src_remote = f'midrive,root_folder_id={source_id}:'
               print(f'🐉 Servidor #{shard} analizando estructura de bloques {shard}/{total}...')
               
-              # Subdirectorios de primer nivel
               subdirs_raw = subprocess.check_output(['rclone', 'lsf', src_remote, '--dirs-only']).decode().splitlines()
               my_dirs = [d for i, d in enumerate(subdirs_raw) if i % total == shard]
               
