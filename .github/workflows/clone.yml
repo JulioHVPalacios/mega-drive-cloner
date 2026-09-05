@@ -1,0 +1,37 @@
+name: Ultra Speed Cloud Transfer & Audit
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  cloud_transfer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Rclone
+        run: |
+          curl https://rclone.org/install.sh | sudo bash
+
+      - name: Configure Rclone
+        env:
+          RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
+          rclone listremotes
+
+      - name: Complete Folder 7 (Cursos Basico a Avanzado)
+        run: |
+          rclone copy "gdrive:2.✴️🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗘 𝗣𝗥𝗢𝗚𝗥𝗔𝗠𝗔𝗖𝗜Ó𝗡 𝗗𝗘 𝗕Á𝗦𝗜𝗖𝗢 𝗔 𝗔𝗩𝗔𝗡𝗭𝗔𝗗𝗢🧠" "midrive:MEGAPACK_PROGRAMACION_COMPLETO/2.✴️🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗘 𝗣𝗥𝗢𝗚𝗥𝗔𝗠𝗔𝗖𝗜Ó𝗡 𝗗𝗘 𝗕Á𝗦𝗜𝗖𝗢 𝗔 𝗔𝗩𝗔𝗡𝗭𝗔𝗗𝗢🧠" --drive-server-side-across-configs=true --fast-list --transfers=32 --checkers=64 --drive-pacer-min-sleep=10ms --drive-pacer-burst=100 -P -v --stats 15s
+
+      - name: Complete Folder 8 (Cursos Proyectos y Extension)
+        run: |
+          rclone copy "gdrive:3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠" "midrive:MEGAPACK_PROGRAMACION_COMPLETO/3.🥇🧑‍💻𝗖𝗨𝗥𝗦𝗢𝗦 𝗗𝗜𝗥𝗘𝗖𝗧𝗢 𝗔 𝗣𝗥𝗢𝗬𝗘𝗖𝗧𝗢𝗦 𝗬 𝗘𝗫𝗧𝗘𝗡𝗦𝗜Ó𝗡 𝗗𝗘 𝗖𝗢𝗡𝗢𝗖𝗜𝗠𝗜𝗘𝗡𝗧𝗢𝗦🧠" --drive-server-side-across-configs=true --fast-list --transfers=32 --checkers=64 --drive-pacer-min-sleep=10ms --drive-pacer-burst=100 -P -v --stats 15s
+
+      - name: Full Forensic Audit (Cross-Check Parity)
+        run: |
+          echo "=== RUNNING FORENSIC PARITY AUDIT ==="
+          rclone check "gdrive:" "midrive:MEGAPACK_PROGRAMACION_COMPLETO" --fast-list --one-way || true
+          echo "=== FINAL SIZE AND FILE COUNT AUDIT ==="
+          rclone size "midrive:MEGAPACK_PROGRAMACION_COMPLETO" --fast-list
