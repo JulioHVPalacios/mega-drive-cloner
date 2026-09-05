@@ -10,6 +10,13 @@ import subprocess
 import urllib.request
 import urllib.parse
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 BOT_TOKEN = "8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI"
 AUTH_CHAT_ID = "1136933800"
 REPO = "JulioHVPalacios/mega-drive-cloner"
@@ -46,7 +53,7 @@ def answer_callback(cb_id):
 def get_runs_status():
     try:
         cmd = ["gh", "run", "list", "--repo", REPO, "--limit", "4", "--json", "databaseId,name,status,conclusion,createdAt"]
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=True)
         runs = json.loads(res.stdout)
         if not runs:
             return "ℹ️ No hay ejecuciones registradas en GitHub Actions."
@@ -76,7 +83,7 @@ def trigger_workflow_download(url, target):
             "-f", "dest_folder=DESCARGAS_UNIVERSALES",
             "-f", "transfer_mode=Auto Streaming RAM Turbo (Zero Disco - Soporta 500GB/1TB/2TB)"
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=True)
         return True, res.stdout
     except Exception as e:
         return False, str(e)
@@ -84,7 +91,7 @@ def trigger_workflow_download(url, target):
 def trigger_sync():
     try:
         cmd = ["gh", "workflow", "run", "sincronizador_automatico_megapack.yml", "--repo", REPO]
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", check=True)
         return True, res.stdout
     except Exception as e:
         return False, str(e)
