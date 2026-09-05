@@ -66,7 +66,10 @@ set "DEST_CONF=%APPDATA%\rclone\rclone.conf"
 if exist "%BACKUP_CONF%" (
     if not exist "%APPDATA%\rclone" mkdir "%APPDATA%\rclone" 2>nul
     copy /y "%BACKUP_CONF%" "%DEST_CONF%" >nul 2>nul
-    echo [OK] Credenciales restauradas automaticamente desde backup seguro.
+    echo [OK] Credenciales de nubes restauradas automaticamente desde backup seguro.
+    if exist "%~dp0backup_seguro\telegram.env" (
+        echo [OK] Credenciales del Bot de Telegram verificadas y listas.
+    )
 ) else (
     echo [i] Si no tienes backup local, usa 'conectar_cualquier_nube.bat' para vincular tus cuentas en 30s.
 )

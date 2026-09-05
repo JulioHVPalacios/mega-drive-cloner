@@ -25,8 +25,8 @@ echo =====================================================================
 set "OPCION="
 set /p "OPCION=Selecciona una opcion [0-9]: "
 
-if not defined OPCION exit /b
-if "%OPCION%"=="0" exit /b
+if not defined OPCION exit /b 0
+if "%OPCION%"=="0" exit /b 0
 if "%OPCION%"=="1" goto DESCARGA_UNIVERSAL_LOCAL
 if "%OPCION%"=="2" goto CLONAR_DRIVE_A_LOCAL
 if "%OPCION%"=="3" goto MONTAR_DRIVE
