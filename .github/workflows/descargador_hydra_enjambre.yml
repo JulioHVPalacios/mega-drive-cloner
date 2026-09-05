@@ -151,7 +151,14 @@ jobs:
                       subprocess.run(cmd, check=True)
           else:
               print(f'🌐 Servidor #{shard} procesando enlace directo o torrent...')
-              cmd = ['rclone', 'copyurl', source, dest_remote, '--auto-filename', '--header-filename'] + turbo_flags + ['-P', '-v']
+              http_flags = [f for f in turbo_flags if f != '--checksum']
+              cmd = [
+                  'rclone', 'copyurl',
+                  source,
+                  f"{dest_remote.rstrip('/')}/",
+                  '--auto-filename',
+                  '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+              ] + http_flags + ['-P', '-v', '--stats', '15s']
               subprocess.run(cmd, check=True)
 
           print(f'✅ Servidor #{shard} completó su partición con éxito total.')

@@ -237,9 +237,8 @@ jobs:
                   cmd = [
                       'rclone', 'copyurl',
                       source,
-                      dest_remote,
+                      f"{dest_remote.rstrip('/')}/",
                       '--auto-filename',
-                      '--header-filename',
                       '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                   ] + http_flags + ['-P', '-v', '--stats', '15s']
                   subprocess.run(cmd, check=True)
