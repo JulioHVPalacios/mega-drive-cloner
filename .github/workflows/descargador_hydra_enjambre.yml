@@ -8,22 +8,23 @@ on:
         required: true
         type: string
       destination_target:
-        description: '2️⃣ [DESTINO] ¿A dónde mandarlo? (Google Drive o OneDrive)'
+        description: '2️⃣ [DESTINO] ¿A dónde mandarlo?'
         required: true
         default: 'Google Drive (Mi Unidad)'
         type: choice
         options:
           - 'Google Drive (Mi Unidad)'
           - 'Microsoft OneDrive'
+          - 'Ambas Nubes (Google Drive + Microsoft OneDrive)'
       dest_folder:
         description: '3️⃣ [CARPETA] Nombre de la carpeta en tu nube'
         required: true
-        default: 'DESCARGAS_HYDRA'
+        default: 'MEGAPACK_PROGRAMACION_COMPLETO'
         type: string
       swarm_nodes:
         description: '4️⃣ [POTENCIA HYDRA] Cantidad de servidores virtuales simultáneos'
         required: true
-        default: '10'
+        default: '20'
         type: choice
         options:
           - '5'
@@ -57,7 +58,7 @@ jobs:
           import os, json, re, subprocess
 
           source = os.environ.get('SOURCE_URL', '').strip()
-          nodes = int(os.environ.get('NODES_COUNT', '10'))
+          nodes = int(os.environ.get('NODES_COUNT', '20'))
 
           # Comprobar si es Google Drive
           m = re.search(r'[-\w]{25,}', source)
@@ -69,15 +70,18 @@ jobs:
           matrix_json = json.dumps(matrix_obj)
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write(f'matrix_config={matrix_json}\n')
-              f.write(f'is_drive={is_drive}\n')
-              f.write(f'source_id={source_id}\n')
+              f.write(f'matrix_config={matrix_json}
+')
+              f.write(f'is_drive={is_drive}
+')
+              f.write(f'source_id={source_id}
+')
 
           print(f'✅ Enjambre Hydra configurado con {nodes} servidores simultáneos.')
           EOF
 
   trabajadores_hydra:
-    name: ⚡ Servidor Hydra #${{ matrix.shard }}
+    name: ⚡ Servidor Hydra (${{ matrix.shard }}, ${{ inputs.swarm_nodes }})
     needs: planificador_enjambre
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -94,7 +98,7 @@ jobs:
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
 
-      - name: 🚀 Transferir Partición #${{ matrix.shard }}
+      - name: 🚀 Transferir Partición
         env:
           SHARD_ID: ${{ matrix.shard }}
           TOTAL_SHARDS: ${{ matrix.total }}
@@ -108,16 +112,20 @@ jobs:
           import os, subprocess, sys
 
           shard = int(os.environ.get('SHARD_ID', '0'))
-          total = int(os.environ.get('TOTAL_SHARDS', '10'))
+          total = int(os.environ.get('TOTAL_SHARDS', '20'))
           source = os.environ.get('SOURCE_URL', '').strip()
           source_id = os.environ.get('SOURCE_ID', '').strip()
           is_drive = os.environ.get('IS_DRIVE', 'false') == 'true'
           target_choice = os.environ.get('DEST_TARGET', '')
           folder = os.environ.get('DEST_FOLDER', '').strip()
 
-          dest_remote = f'midrive:{folder}' if 'Google Drive' in target_choice else f'onedrive:{folder}'
+          dest_destinations = []
+          if 'Google Drive' in target_choice or 'Ambas' in target_choice:
+              dest_destinations.append(('midrive', f'midrive:{folder}'))
+          if 'OneDrive' in target_choice or 'Ambas' in target_choice:
+              dest_destinations.append(('onedrive', f'onedrive:{folder}'))
 
-          turbo_flags = [
+          base_flags = [
               '--fast-list',
               '--transfers=16',
               '--checkers=32',
@@ -128,42 +136,52 @@ jobs:
               '--checksum'
           ]
 
-          if 'Google Drive' in target_choice:
-              turbo_flags.extend(['--drive-chunk-size=256M', '--drive-pacer-min-sleep=50ms'])
-          else:
-              turbo_flags.extend(['--onedrive-chunk-size=250M'])
-
           if is_drive:
               src_remote = f'midrive,root_folder_id={source_id}:'
-              print(f'🐉 Servidor #{shard} iniciando extracción de bloque {shard}/{total} desde Drive...')
-              # Listar subdirectorios de primer nivel y filtrar según hash modular
+              print(f'🐉 Servidor #{shard} analizando estructura de bloques {shard}/{total}...')
+              
+              # Subdirectorios de primer nivel
               subdirs_raw = subprocess.check_output(['rclone', 'lsf', src_remote, '--dirs-only']).decode().splitlines()
               my_dirs = [d for i, d in enumerate(subdirs_raw) if i % total == shard]
               
-              if my_dirs:
-                  for d in my_dirs:
-                      print(f'📁 Servidor #{shard} copiando: {d}')
-                      cmd = ['rclone', 'copy', f'{src_remote}{d}', f'{dest_remote}/{d}', '--drive-server-side-across-configs=true'] + turbo_flags + ['-P', '-v']
-                      subprocess.run(cmd, check=True)
-              else:
-                  # Si no hay subdirectorios suficientes, transferir archivos con filtro modular
-                  print(f'📄 Servidor #{shard} procesando archivos raíz...')
-                  files_raw = subprocess.check_output(['rclone', 'lsf', src_remote, '--files-only']).decode().splitlines()
-                  my_files = [f for i, f in enumerate(files_raw) if i % total == shard]
-                  for f in my_files:
-                      cmd = ['rclone', 'copyto', f'{src_remote}{f}', f'{dest_remote}/{f}', '--drive-server-side-across-configs=true'] + turbo_flags + ['-P', '-v']
-                      subprocess.run(cmd, check=True)
+              for remote_type, dest_remote in dest_destinations:
+                  current_flags = list(base_flags)
+                  if remote_type == 'midrive':
+                      current_flags.extend([
+                          '--drive-chunk-size=256M',
+                          '--drive-pacer-min-sleep=10ms',
+                          '--drive-pacer-burst=200',
+                          '--drive-server-side-across-configs=true'
+                      ])
+                  else:
+                      current_flags.extend([
+                          '--onedrive-chunk-size=250M'
+                      ])
+
+                  if my_dirs:
+                      for d in my_dirs:
+                          print(f'📁 Servidor #{shard} -> {remote_type.upper()}: copiando subdirectorio: {d}')
+                          cmd = ['rclone', 'copy', f'{src_remote}{d}', f'{dest_remote}/{d}'] + current_flags + ['-P', '-v', '--stats', '15s']
+                          subprocess.run(cmd, check=True)
+                  else:
+                      print(f'📄 Servidor #{shard} -> {remote_type.upper()}: procesando archivos...')
+                      files_raw = subprocess.check_output(['rclone', 'lsf', src_remote, '--files-only']).decode().splitlines()
+                      my_files = [f for i, f in enumerate(files_raw) if i % total == shard]
+                      for f in my_files:
+                          cmd = ['rclone', 'copyto', f'{src_remote}{f}', f'{dest_remote}/{f}'] + current_flags + ['-P', '-v', '--stats', '15s']
+                          subprocess.run(cmd, check=True)
           else:
               print(f'🌐 Servidor #{shard} procesando enlace directo o torrent...')
-              http_flags = [f for f in turbo_flags if f != '--checksum']
-              cmd = [
-                  'rclone', 'copyurl',
-                  source,
-                  f"{dest_remote.rstrip('/')}/",
-                  '--auto-filename',
-                  '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-              ] + http_flags + ['-P', '-v', '--stats', '15s']
-              subprocess.run(cmd, check=True)
+              http_flags = [f for f in base_flags if f != '--checksum']
+              for remote_type, dest_remote in dest_destinations:
+                  cmd = [
+                      'rclone', 'copyurl',
+                      source,
+                      f"{dest_remote.rstrip('/')}/",
+                      '--auto-filename',
+                      '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                  ] + http_flags + ['-P', '-v', '--stats', '15s']
+                  subprocess.run(cmd, check=True)
 
           print(f'✅ Servidor #{shard} completó su partición con éxito total.')
           EOF
@@ -187,24 +205,24 @@ jobs:
           DEST_FOLDER: ${{ inputs.dest_folder }}
           NODES_COUNT: ${{ inputs.swarm_nodes }}
         run: |
-          remote="midrive:${{ inputs.dest_folder }}"
-          if [[ "${{ inputs.destination_target }}" == *"OneDrive"* ]]; then
-            remote="onedrive:${{ inputs.dest_folder }}"
-          fi
-
           echo "=========================================================="
           echo "🎉 ENJAMBRE HYDRA COMPLETADO AL 100%"
           echo "Servidores en paralelo ejecutados: ${{ inputs.swarm_nodes }}"
-          echo "Destino: $remote"
+          echo "Destino seleccionado: ${{ inputs.destination_target }}"
           echo "=========================================================="
-          rclone size "$remote" --fast-list
-          if [[ "$remote" != "midrive:MEGAPACK_PROGRAMACION_COMPLETO" ]]; then
-            echo "📊 TAMAÑO TOTAL DEL MEGAPACK COMPLETO:"
-            rclone size "midrive:MEGAPACK_PROGRAMACION_COMPLETO" --fast-list || true
+          
+          if [[ "${{ inputs.destination_target }}" == *"Google Drive"* ]] || [[ "${{ inputs.destination_target }}" == *"Ambas"* ]]; then
+            echo "📊 AUDITORÍA GOOGLE DRIVE:"
+            rclone size "midrive:${{ inputs.dest_folder }}" --fast-list
+          fi
+
+          if [[ "${{ inputs.destination_target }}" == *"OneDrive"* ]] || [[ "${{ inputs.destination_target }}" == *"Ambas"* ]]; then
+            echo "📊 AUDITORÍA MICROSOFT ONEDRIVE:"
+            rclone size "onedrive:${{ inputs.dest_folder }}" --fast-list
           fi
 
           echo "### 🐉 Reporte de Salud del Enjambre Hydra" >> $GITHUB_STEP_SUMMARY
           echo "- **Estado:** 🟢 100% Exitoso y Verificado con Checksum" >> $GITHUB_STEP_SUMMARY
           echo "- **Servidores concurrentes:** ${{ inputs.swarm_nodes }} servidores Azure en paralelo" >> $GITHUB_STEP_SUMMARY
-          echo "- **Carpeta:** \`$remote\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Destino:** ${{ inputs.destination_target }} (\`${{ inputs.dest_folder }}\`)" >> $GITHUB_STEP_SUMMARY
           echo "- **Integridad:** Cero pérdida de datos (Auditoría Forense Aprobada)" >> $GITHUB_STEP_SUMMARY
