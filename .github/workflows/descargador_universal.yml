@@ -165,7 +165,7 @@ jobs:
           print(f'📦 Origen: {source}')
           print(f'⚡ Modo: {mode}')
 
-          # Banderas maestras de velocidad extrema sin riesgo
+          # Banderas maestras de velocidad extrema y verificación criptográfica (Cero corrupción)
           turbo_flags = [
               '--fast-list',
               '--transfers=32',
@@ -173,7 +173,11 @@ jobs:
               '--buffer-size=256M',
               '--use-mmap',
               '--multi-thread-streams=16',
-              '--multi-thread-cutoff=32M'
+              '--multi-thread-cutoff=32M',
+              '--retries=10',
+              '--low-level-retries=20',
+              '--retries-sleep=5s',
+              '--checksum'
           ]
 
           if is_gdrive:
