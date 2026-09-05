@@ -40,10 +40,12 @@ jobs:
       source_id: ${{ steps.planificar.outputs.source_id }}
     steps:
       - name: 🛠️ Instalar Rclone
+        env:
+          RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG }}
         run: |
           curl https://rclone.org/install.sh | sudo bash
           mkdir -p ~/.config/rclone
-          echo "${{ secrets.RCLONE_CONFIG }}" > ~/.config/rclone/rclone.conf
+          echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
 
       - id: planificar
         name: 📦 Analizar contenido y generar particiones
@@ -84,11 +86,13 @@ jobs:
       matrix: ${{ fromJson(needs.planificador_enjambre.outputs.matrix_config) }}
     steps:
       - name: 🛠️ Instalar Motores de Transferencia
+        env:
+          RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG }}
         run: |
           curl https://rclone.org/install.sh | sudo bash
           sudo apt-get update -y && sudo apt-get install -y aria2
           mkdir -p ~/.config/rclone
-          echo "${{ secrets.RCLONE_CONFIG }}" > ~/.config/rclone/rclone.conf
+          echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
 
       - name: 🚀 Transferir Partición #${{ matrix.shard }}
         env:
@@ -170,10 +174,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 🛠️ Instalar Rclone
+        env:
+          RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG }}
         run: |
           curl https://rclone.org/install.sh | sudo bash
           mkdir -p ~/.config/rclone
-          echo "${{ secrets.RCLONE_CONFIG }}" > ~/.config/rclone/rclone.conf
+          echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
 
       - name: 📋 Generar Certificado de Salud y Tamaño
         env:
