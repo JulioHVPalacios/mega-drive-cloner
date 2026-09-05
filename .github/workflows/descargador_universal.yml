@@ -72,7 +72,7 @@ jobs:
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
 
-          python3 -c "
+          python3 - << 'EOF'
           import os, subprocess, re
 
           target = os.environ.get('DEST_TARGET', '')
@@ -136,7 +136,7 @@ jobs:
                   f'host={host}', f'user={user}', f'pass={obs_pwd}'
               ]
               subprocess.run(cmd, check=True)
-          "
+          EOF
           echo "✅ Remotes activos y listos:"
           rclone listremotes
 
@@ -147,7 +147,7 @@ jobs:
           DEST_FOLDER: ${{ inputs.dest_folder }}
           TRANSFER_MODE: ${{ inputs.transfer_mode }}
         run: |
-          python3 -c "
+          python3 - << 'EOF'
           import os, re, subprocess, sys, shutil
 
           source = os.environ.get('SOURCE_URL', '').strip()
@@ -265,7 +265,7 @@ jobs:
               subprocess.run(cmd, check=True)
 
           print('🎉 ¡Transferencia turbo completada al 100% exitosamente!')
-          "
+          EOF
 
       - name: 📊 Auditoría Forense y Verificación de Integridad
         env:

@@ -51,7 +51,7 @@ jobs:
           SOURCE_URL: ${{ inputs.source_url }}
           NODES_COUNT: ${{ inputs.swarm_nodes }}
         run: |
-          python3 -c "
+          python3 - << 'EOF'
           import os, json, re, subprocess
 
           source = os.environ.get('SOURCE_URL', '').strip()
@@ -72,7 +72,7 @@ jobs:
               f.write(f'source_id={source_id}\n')
 
           print(f'✅ Enjambre Hydra configurado con {nodes} servidores simultáneos.')
-          "
+          EOF
 
   trabajadores_hydra:
     name: ⚡ Servidor Hydra #${{ matrix.shard }}
@@ -100,7 +100,7 @@ jobs:
           DEST_TARGET: ${{ inputs.destination_target }}
           DEST_FOLDER: ${{ inputs.dest_folder }}
         run: |
-          python3 -c "
+          python3 - << 'EOF'
           import os, subprocess, sys
 
           shard = int(os.environ.get('SHARD_ID', '0'))
@@ -162,7 +162,7 @@ jobs:
               subprocess.run(cmd, check=True)
 
           print(f'✅ Servidor #{shard} completó su partición con éxito total.')
-          "
+          EOF
 
   auditoria_y_resumen_final:
     name: 📊 3. Auditoría Forense y Resumen de Salud
