@@ -125,7 +125,7 @@ jobs:
           ]
 
           if 'Google Drive' in target_choice:
-              turbo_flags.extend(['--drive-chunk-size=256M', '--drive-pacer-min-sleep=10ms', '--drive-pacer-burst=200'])
+              turbo_flags.extend(['--drive-chunk-size=256M', '--drive-pacer-min-sleep=50ms'])
           else:
               turbo_flags.extend(['--onedrive-chunk-size=250M'])
 
@@ -192,6 +192,10 @@ jobs:
           echo "Destino: $remote"
           echo "=========================================================="
           rclone size "$remote" --fast-list
+          if [[ "$remote" != "midrive:MEGAPACK_PROGRAMACION_COMPLETO" ]]; then
+            echo "📊 TAMAÑO TOTAL DEL MEGAPACK COMPLETO:"
+            rclone size "midrive:MEGAPACK_PROGRAMACION_COMPLETO" --fast-list || true
+          fi
 
           echo "### 🐉 Reporte de Salud del Enjambre Hydra" >> $GITHUB_STEP_SUMMARY
           echo "- **Estado:** 🟢 100% Exitoso y Verificado con Checksum" >> $GITHUB_STEP_SUMMARY
