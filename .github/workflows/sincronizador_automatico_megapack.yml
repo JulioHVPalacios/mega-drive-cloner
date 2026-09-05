@@ -148,3 +148,38 @@ jobs:
           except Exception as e:
               print(f"⚠️ Error al enviar Telegram: {e}")
           EOF
+
+      - name: 🚨 Alerta de Error en Auto-Sincronizador a Telegram
+        if: failure()
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
+          import os, json, urllib.request
+
+          token = os.environ.get("TG_TOKEN")
+          chat_id = os.environ.get("TG_CHAT_ID")
+
+          if not token or not chat_id:
+              exit(0)
+
+          html_msg = (
+              "🚨 <b>ALERTA EN AUTO-SINCRONIZADOR</b>\n\n"
+              "El auto-sincronizador en Azure detectó una interrupción o error temporal en la API de Google.\n"
+              "🛡️ <i>Tus archivos existentes están 100% seguros e intactos. El sistema reintentará en el siguiente horario automático.</i>"
+          )
+
+          data = json.dumps({
+              "chat_id": chat_id,
+              "text": html_msg,
+              "parse_mode": "HTML"
+          }).encode("utf-8")
+
+          url = f"https://api.telegram.org/bot{token}/sendMessage"
+          req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+          try:
+              urllib.request.urlopen(req)
+          except Exception:
+              pass
+          EOF
