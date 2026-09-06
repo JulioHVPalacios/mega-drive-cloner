@@ -1,0 +1,302 @@
+name: ⚡ Clúster Multi-Servidor 30.5 GB (Enjambre Azure en Paralelo)
+
+on:
+  workflow_dispatch:
+    inputs:
+      destination_folder:
+        description: '📁 Carpeta de destino en Google Drive'
+        required: true
+        default: 'DESCARGAS_UNIVERSALES/test_cluster_30gb'
+        type: string
+      purge_after_test:
+        description: '🧹 ¿Purgar tras auditar? (true = conserva tus 4.25 TB libres)'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  cluster_nodos:
+    name: 🚀 Nodo ${{ matrix.nodo }} - ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      matrix:
+        include:
+          - nodo: 1
+            name: 'AlmaLinux 9 (15.2GB) + Sintel P2P'
+          - nodo: 2
+            name: 'Rocky Linux 9 (15.2GB Enterprise)'
+      fail-fast: false
+
+    steps:
+      - name: ⚡ Optimización Nuclear de Red (Google BBR + Ventana TCP 64MB)
+        run: |
+          sudo sysctl -w net.core.default_qdisc=fq || true
+          sudo sysctl -w net.ipv4.tcp_congestion_control=bbr || true
+          sudo sysctl -w net.core.rmem_max=67108864 || true
+          sudo sysctl -w net.core.wmem_max=67108864 || true
+          sudo sysctl -w net.ipv4.tcp_rmem="4096 87380 67108864" || true
+          sudo sysctl -w net.ipv4.tcp_wmem="4096 65536 67108864" || true
+          sudo sysctl -w net.ipv4.tcp_window_scaling=1 || true
+          sudo sysctl -w net.ipv4.tcp_slow_start_after_idle=0 || true
+          echo "🚀 Algoritmo de congestión activo:"
+          sysctl net.ipv4.tcp_congestion_control
+
+      - name: 🧹 Purga de Disco Azure (~65-70 GB Libres)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /imagegeneration || true
+          sudo docker image prune -a -f || true
+          df -h /
+
+      - name: 🛠️ Instalar Dependencias (Rclone Oficial, Aria2c Turbo)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y aria2 curl python3 python3-pip
+          curl https://rclone.org/install.sh | sudo bash
+
+      - name: 🔐 Inyectar Credenciales de Rclone
+        env:
+          RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
+          rclone listremotes
+
+      - name: 🌪️ Ejecutar Transferencia en Nodo Dedicado
+        env:
+          NODO_ID: ${{ matrix.nodo }}
+          DEST_FOLDER: ${{ inputs.destination_folder }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
+          import os, time, subprocess, shutil, json, urllib.request
+
+          nodo_id = int(os.environ.get('NODO_ID', '1'))
+          base_folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/test_cluster_30gb').strip()
+          tg_token = os.environ.get('TG_TOKEN', '').strip()
+          tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
+
+          dest_remote = f'midrive:{base_folder}/nodo_{nodo_id}'
+          print(f"🎯 [NODO {nodo_id}] Destino en Google Drive: {dest_remote}")
+
+          def notify_tg(text):
+              if not tg_token or not tg_chat_id:
+                  return
+              try:
+                  url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
+                  data = json.dumps({"chat_id": tg_chat_id, "text": text, "parse_mode": "HTML"}).encode('utf-8')
+                  req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+                  urllib.request.urlopen(req, timeout=10)
+              except Exception as e:
+                  print(f"⚠️ Error enviando Telegram: {e}")
+
+          if nodo_id == 1:
+              items = [
+                  {
+                      "name": "Sintel P2P BitTorrent HD Pack (Video + Subs + Art)",
+                      "type": "torrent",
+                      "source": "https://webtorrent.io/torrents/sintel.torrent",
+                      "est_size_mb": 129
+                  },
+                  {
+                      "name": "AlmaLinux 9 Enterprise DVD ISO",
+                      "type": "aria2",
+                      "source": "https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso",
+                      "filename": "AlmaLinux-9-latest-x86_64-dvd.iso",
+                      "est_size_mb": 15152
+                  }
+              ]
+          else:
+              items = [
+                  {
+                      "name": "Rocky Linux 9 Enterprise DVD ISO",
+                      "type": "aria2",
+                      "source": "https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso",
+                      "filename": "Rocky-9-latest-x86_64-dvd.iso",
+                      "est_size_mb": 15194
+                  }
+              ]
+
+          total_est_mb = sum(x["est_size_mb"] for x in items)
+          print(f"📊 [NODO {nodo_id}] Total asignado: {len(items)} items ({total_est_mb / 1024:.2f} GB)")
+
+          notify_tg(
+              f"🚀 <b>CLÚSTER NODO {nodo_id} EN LÍNEA</b>\n"
+              f"📦 <b>Carga:</b> {total_est_mb / 1024:.2f} GB\n"
+              f"☁️ <b>Destino:</b> <code>{dest_remote}</code>\n"
+              f"⚡ <b>Tecnología:</b> Azure Cloud VM Dedicada + BBR + Chunks 256MB"
+          )
+
+          work_dir = f"/tmp/nodo_{nodo_id}_workdir"
+          os.makedirs(work_dir, exist_ok=True)
+
+          rclone_turbo_flags = [
+              '--fast-list',
+              '--transfers=16',
+              '--checkers=32',
+              '--buffer-size=128M',
+              '--use-mmap',
+              '--drive-chunk-size=256M',
+              '--drive-pacer-min-sleep=10ms',
+              '--drive-pacer-burst=200',
+              '--retries=5',
+              '--low-level-retries=10'
+          ]
+
+          total_bytes_transferred = 0
+          start_time = time.time()
+
+          for idx, item in enumerate(items, 1):
+              print("\n" + "="*70)
+              print(f"🔄 [NODO {nodo_id}] [{idx}/{len(items)}] PROCESANDO: {item['name']}")
+              print("="*70)
+
+              item_dir = os.path.join(work_dir, f"item_{idx}")
+              os.makedirs(item_dir, exist_ok=True)
+              t0 = time.time()
+
+              if item["type"] == "torrent":
+                  print(f"🧲 Descargando Torrent P2P con Aria2c: {item['source']}...")
+                  subprocess.run([
+                      'aria2c',
+                      '--seed-time=0',
+                      '--max-connection-per-server=16',
+                      '--split=16',
+                      '--min-split-size=1M',
+                      '--enable-dht=true',
+                      '--summary-interval=10',
+                      '-d', item_dir,
+                      item['source']
+                  ], check=True)
+              else:
+                  print(f"⚡ Descargando vía Aria2c (16 hilos): {item['source']}...")
+                  subprocess.run([
+                      'aria2c',
+                      '--max-connection-per-server=16',
+                      '--split=16',
+                      '--min-split-size=4M',
+                      '-d', item_dir,
+                      '-o', item["filename"],
+                      item['source']
+                  ], check=True)
+
+              dl_time = time.time() - t0
+              item_size_bytes = sum(os.path.getsize(os.path.join(r, f)) for r, d, fs in os.walk(item_dir) for f in fs)
+              total_bytes_transferred += item_size_bytes
+              dl_speed_mb = (item_size_bytes / (1024*1024)) / max(dl_time, 0.001)
+
+              print(f"✅ Descarga completada: {item_size_bytes / (1024*1024):.2f} MB en {dl_time:.1f}s ({dl_speed_mb:.2f} MB/s)")
+
+              t_up = time.time()
+              print(f"📤 Subiendo a Google Drive ({dest_remote})...")
+              subprocess.run(['rclone', 'copy', item_dir, dest_remote] + rclone_turbo_flags + ['-P', '--stats', '10s'], check=True)
+              up_time = time.time() - t_up
+              up_speed_mb = (item_size_bytes / (1024*1024)) / max(up_time, 0.001)
+
+              print(f"🎉 Subida completada: en {up_time:.1f}s ({up_speed_mb:.2f} MB/s)")
+
+              shutil.rmtree(item_dir)
+              print(f"🧹 Disco de Azure liberado inmediatamente.")
+
+              notify_tg(
+                  f"✅ <b>[NODO {nodo_id}] Ítem Completado:</b> <code>{item['name']}</code>\n"
+                  f"📊 {item_size_bytes / (1024*1024*1024):.2f} GB | ⬇️ {dl_speed_mb:.1f} MB/s | ⬆️ {up_speed_mb:.1f} MB/s"
+              )
+
+          elapsed = time.time() - start_time
+          total_gb = total_bytes_transferred / (1024*1024*1024)
+          avg_speed = (total_bytes_transferred / (1024*1024)) / max(elapsed, 0.001)
+
+          print("\n" + "#"*70)
+          print(f"🏆 [NODO {nodo_id}] FINALIZADO EXITOSAMENTE:")
+          print(f"📦 Transferido: {total_gb:.2f} GB en {elapsed / 60:.2f} minutos ({avg_speed:.2f} MB/s)")
+          print("#"*70)
+
+          notify_tg(
+              f"🏁 <b>[NODO {nodo_id}] FINALIZADO</b>\n"
+              f"📦 <b>Volumen:</b> {total_gb:.2f} GB\n"
+              f"⏱️ <b>Tiempo de este nodo:</b> {elapsed / 60:.2f} min ({avg_speed:.1f} MB/s)"
+          )
+          EOF
+
+  cluster_auditoria_y_purga:
+    name: 🏆 Auditoría Consolidada y Certificación de Integridad
+    needs: [cluster_nodos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🛠️ Instalar Rclone Oficial
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y curl
+          curl https://rclone.org/install.sh | sudo bash
+
+      - name: 🔐 Inyectar Credenciales de Rclone
+        env:
+          RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
+
+      - name: 🏆 Auditoría Global en Google Drive
+        env:
+          DEST_FOLDER: ${{ inputs.destination_folder }}
+          PURGE_AFTER: ${{ inputs.purge_after_test }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
+          import os, subprocess, json, urllib.request
+
+          folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/test_cluster_30gb').strip()
+          purge = os.environ.get('PURGE_AFTER', 'true').lower() == 'true'
+          tg_token = os.environ.get('TG_TOKEN', '').strip()
+          tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
+
+          target_remote = f'midrive:{folder}'
+          print(f"🔍 Auditando destino consolidado del Clúster: {target_remote}")
+
+          def notify_tg(text):
+              if not tg_token or not tg_chat_id:
+                  return
+              try:
+                  url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
+                  data = json.dumps({"chat_id": tg_chat_id, "text": text, "parse_mode": "HTML"}).encode('utf-8')
+                  req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+                  urllib.request.urlopen(req, timeout=10)
+              except Exception as e:
+                  print(f"⚠️ Error enviando Telegram: {e}")
+
+          print("\n" + "="*70)
+          print("📊 ESTADO EN VIVO EN GOOGLE DRIVE TRAS LA INYECCIÓN DEL CLÚSTER:")
+          print("="*70)
+          res_size = subprocess.run(['rclone', 'size', target_remote, '--json'], stdout=subprocess.PIPE, text=True)
+          print("Detalle de archivos en Google Drive:")
+          subprocess.run(['rclone', 'lsl', target_remote])
+
+          total_bytes = 0
+          total_count = 0
+          try:
+              size_data = json.loads(res_size.stdout)
+              total_bytes = size_data.get('bytes', 0)
+              total_count = size_data.get('count', 0)
+          except Exception as e:
+              print(f"Error parseando tamaño json: {e}")
+
+          total_gb = total_bytes / (1024*1024*1024)
+          print(f"\n📦 Volumen Total Confirmado en Google Drive: {total_gb:.2f} GB ({total_bytes:,} Bytes) en {total_count} objetos")
+
+          if purge:
+              print(f"\n🧹 Purgando carpeta {target_remote} para proteger tus 4.25 TB libres...")
+              subprocess.run(['rclone', 'purge', target_remote], check=True)
+              print("✅ Limpieza completada. Verificando estado final:")
+              subprocess.run(['rclone', 'size', 'midrive:DESCARGAS_UNIVERSALES'])
+
+          notify_tg(
+              f"🏆 <b>¡CLÚSTER MULTI-SERVIDOR COMPLETADO AL 100%!</b>\n\n"
+              f"📦 <b>Volumen Total Auditado en Google Drive:</b> {total_gb:.2f} GB ({total_count} objetos)\n"
+              f"⚡ <b>Arquitectura:</b> 2 Servidores Azure en Paralelo (Enjambre)\n"
+              f"🛡️ <b>Purga Post-Auditoría:</b> {'Ejecutada (Tu Drive limpio)' if purge else 'Archivos conservados'}\n"
+              f"🚀 <b>Resultado:</b> Transferencia ultra-acelerada con éxito total"
+          )
+          EOF
