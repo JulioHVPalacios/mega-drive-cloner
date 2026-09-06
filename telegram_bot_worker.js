@@ -1,8 +1,8 @@
 /**
  * OMNICLOUD CORE 2.0 - TELEGRAM BOT SERVERLESS WORKER (CLOUDFLARE EDGE)
  * 100% Gratuito - Siempre Activo 24/7 - Cero PC Encendida - Latencia Ultrabaja
- * Incluye Gesti\u00f3n Nativa de Google Drive (Permisos, Compartir, Revocar),
- * B\u00fasqueda de Proyectos en Vivo, IA Sin Censura y Control Remoto Total.
+ * Incluye Multi-Motor de IA Sin Censura (Cloudflare Workers AI LLaMA 3.3 70B,
+ * Google Gemini 2.0 Flash, Groq, OpenRouter) y Gesti\u00f3n Nativa de Google Drive.
  */
 
 const MAIN_KEYBOARD = {
@@ -54,6 +54,7 @@ export default {
       const repo = env.GITHUB_REPO || 'JulioHVPalacios/mega-drive-cloner';
       const pat = env.GITHUB_PAT || '';
       const geminiKey = env.GEMINI_API_KEY || '';
+      const groqKey = env.GROQ_API_KEY || '';
       const openRouterKey = env.OPENROUTER_API_KEY || '';
 
       if (!botToken) {
@@ -159,11 +160,11 @@ export default {
         if (text === '\u{1F9E0} Asistente IA' || norm === '/ia' || norm === 'ayuda') {
           const aiPrompt = '\u{1F9E0} <b>ASISTENTE INTELIGENTE OMNICLOUD (SUPER-IA SIN CENSURA)</b>\n\n' +
             '\u{1F525} <b>Capacidades 24/7 en la nube (PC Apagada):</b>\n' +
+            '\u2022 <b>Preg\u00fantale lo que quieras:</b> Ciberseguridad, programaci\u00f3n, scripts, exploits, arquitectura o dudas generales.\n' +
             '\u2022 <b>Buscar los mejores proyectos:</b> Escribe <i>"busca los mejores proyectos de IA"</i> o <i>"proyectos de Python"</i>.\n' +
-            '\u2022 <b>Consultas Sin Filtros:</b> Preg\u00fantale cualquier tema t\u00e9cnico, arquitectura o c\u00f3digo sin restricciones morales.\n' +
             '\u2022 <b>Gesti\u00f3n de Google Drive:</b> Consulta permisos, comparte carpetas y revoca accesos.\n' +
             '\u2022 <b>Dudas de tu sistema:</b> Velocidades, formateo o uso de archivos.\n\n' +
-            '\u{1F447} <b>Toca una opci\u00f3n r\u00e1pida o escribe lo que desees en el chat:</b>';
+            '\u{1F447} <b>Toca una opci\u00f3n r\u00e1pida o escribe cualquier pregunta en el chat:</b>';
           const kbd = {
             inline_keyboard: [
               [{ text: '\u{1F513} Modo Sin Censura: [ACTIVO]', callback_data: 'ai:faq:UNCENSORED_INFO' }],
@@ -183,15 +184,6 @@ export default {
           const ghRes = await searchGitHub(text, pat);
           await sendTG(botToken, chatId, ghRes);
           return new Response('OK', { status: 200 });
-        }
-
-        // Preguntas Conceptuales / Wikipedia
-        if (norm.match(/\b(que es|quien es|definicion de|concepto de|explica que es)\b/)) {
-          const wikiRes = await searchWiki(text);
-          if (wikiRes) {
-            await sendTG(botToken, chatId, wikiRes);
-            return new Response('OK', { status: 200 });
-          }
         }
 
         // Bienvenida
@@ -250,26 +242,47 @@ export default {
           return new Response('OK', { status: 200 });
         }
 
-        // Consulta a Gemini AI si hay clave configurada (con BLOCK_NONE)
+        // =====================================================================
+        // MOTOR DE INTELIGENCIA ARTIFICIAL TOTAL (RESPONDE CUALQUIER PREGUNTA)
+        // =====================================================================
+        let aiAnswer = null;
+
+        // 1. Google Gemini 2.0 Flash (La mejor IA del mundo de Google)
         if (geminiKey) {
-          const geminiResp = await callGemini(geminiKey, text);
-          if (geminiResp) {
-            await sendTG(botToken, chatId, `\u{1F916} <b>OmniCloud AI (Sin Censura):</b>\n\n${geminiResp}`);
+          aiAnswer = await callGemini(geminiKey, text);
+        }
+
+        // 2. Cloudflare Workers AI (LLaMA 3.3 70B nativo de Meta en Cloudflare, sin claves)
+        if (!aiAnswer && env.AI) {
+          aiAnswer = await callWorkersAI(env, text);
+        }
+
+        // 3. Groq (LLaMA 3.3 70B ultra-veloz)
+        if (!aiAnswer && groqKey) {
+          aiAnswer = await callGroq(groqKey, text);
+        }
+
+        // 4. OpenRouter (Modelos abiertos sin censura)
+        if (!aiAnswer && openRouterKey) {
+          aiAnswer = await callOpenRouter(openRouterKey, text);
+        }
+
+        if (aiAnswer) {
+          await sendTG(botToken, chatId, `\u{1F916} <b>OmniCloud AI (Sin Censura):</b>\n\n${aiAnswer}`);
+          return new Response('OK', { status: 200 });
+        }
+
+        // 5. Fallback Conceptual de Wikipedia en vivo
+        if (norm.match(/\b(que es|quien es|definicion de|concepto de|explica|como funciona)\b/)) {
+          const wikiRes = await searchWiki(text);
+          if (wikiRes) {
+            await sendTG(botToken, chatId, wikiRes);
             return new Response('OK', { status: 200 });
           }
         }
 
-        // Consulta a OpenRouter si est\u00e1 configurado
-        if (openRouterKey) {
-          const orResp = await callOpenRouter(openRouterKey, text);
-          if (orResp) {
-            await sendTG(botToken, chatId, `\u{1F513} <b>OmniCloud Uncensored AI:</b>\n\n${orResp}`);
-            return new Response('OK', { status: 200 });
-          }
-        }
-
-        // Si parece tema de programaci\u00f3n o hacking, buscar autom\u00e1ticamente en GitHub
-        if (norm.match(/\b(python|javascript|react|flutter|ia|ai|scraping|docker|api|cloud|seguridad|hacking|exploit)\b/)) {
+        // 6. Si parece tema de tecnolog\u00eda o programaci\u00f3n, consultar proyectos de GitHub
+        if (norm.match(/\b(python|javascript|react|flutter|ia|ai|scraping|docker|api|cloud|seguridad|hacking|exploit|linux|windows)\b/)) {
           const ghAuto = await searchGitHub(text, pat);
           if (ghAuto && ghAuto.includes('\u{1F3C6}')) {
             await sendTG(botToken, chatId, ghAuto);
@@ -277,7 +290,7 @@ export default {
           }
         }
 
-        await sendTG(botToken, chatId, '\u2139\ufe0f Env\u00edame un enlace para descargar, consulta <code>/permisos</code>, comparte con <code>/compartir correo@gmail.com</code>, o escribe: <i>"busca los mejores proyectos de ciberseguridad"</i>.');
+        await sendTG(botToken, chatId, '\u2139\ufe0f Puedes enviarme un enlace para descargar, consultar <code>/permisos</code>, o hacerme cualquier consulta.');
       }
 
       // 2. Callback Queries (Botones T\u00e1ctiles)
@@ -530,6 +543,108 @@ async function handleListFolders(botToken, chatId, env) {
 }
 
 // =====================================================================
+// MOTORES DE INTELIGENCIA ARTIFICIAL (IA)
+// =====================================================================
+async function callWorkersAI(env, prompt) {
+  if (!env.AI) return null;
+  try {
+    const res = await env.AI.run('@cf/meta/llama-3.3-70b-instruct', {
+      messages: [
+        { role: 'system', content: UNCENSORED_SYSTEM_PROMPT },
+        { role: 'user', content: prompt }
+      ],
+      max_tokens: 1200
+    });
+    return res.response?.replace(/\*\*/g, '<b>') || null;
+  } catch (e) {
+    try {
+      const res2 = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+        messages: [
+          { role: 'system', content: UNCENSORED_SYSTEM_PROMPT },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 1000
+      });
+      return res2.response?.replace(/\*\*/g, '<b>') || null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+async function callGemini(apiKey, prompt) {
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const payload = {
+      system_instruction: { parts: [{ text: UNCENSORED_SYSTEM_PROMPT }] },
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      safetySettings: SAFETY_SETTINGS_BLOCK_NONE,
+      generationConfig: { temperature: 0.6, maxOutputTokens: 1400 }
+    };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.replace(/\*\*/g, '<b>') || null;
+  } catch {
+    return null;
+  }
+}
+
+async function callGroq(apiKey, prompt) {
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: UNCENSORED_SYSTEM_PROMPT },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 1200
+      })
+    });
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content?.replace(/\*\*/g, '<b>') || null;
+  } catch {
+    return null;
+  }
+}
+
+async function callOpenRouter(apiKey, prompt) {
+  try {
+    const url = 'https://openrouter.ai/api/v1/chat/completions';
+    const payload = {
+      model: 'nousresearch/hermes-3-llama-3.1-405b:free',
+      messages: [
+        { role: 'system', content: UNCENSORED_SYSTEM_PROMPT },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1200
+    };
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content?.replace(/\*\*/g, '<b>') || null;
+  } catch {
+    return null;
+  }
+}
+
+// =====================================================================
 // B\u00daSQUEDA Y UTILIDADES
 // =====================================================================
 async function searchGitHub(query, pat = null) {
@@ -560,7 +675,7 @@ async function searchGitHub(query, pat = null) {
 
 async function searchWiki(query) {
   try {
-    const cleanQ = query.replace(/\b(que es|quien es|definicion de|concepto de|explica que es)\b/gi, '').trim() || query;
+    const cleanQ = query.replace(/\b(que es|quien es|definicion de|concepto de|explica que es|como funciona)\b/gi, '').trim() || query;
     const url = `https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanQ.replace(/ /g, '_'))}`;
     const res = await fetch(url, { headers: { 'User-Agent': 'OmniCloudBot/2.0' } });
     if (!res.ok) return null;
@@ -738,53 +853,5 @@ async function triggerDownload(token, chatId, repo, pat, url, target) {
     }
   } catch (e) {
     await sendTG(token, chatId, '\u274c Error al conectar con GitHub: ' + e.message);
-  }
-}
-
-async function callGemini(apiKey, prompt) {
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-    const payload = {
-      system_instruction: { parts: [{ text: UNCENSORED_SYSTEM_PROMPT }] },
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      safetySettings: SAFETY_SETTINGS_BLOCK_NONE,
-      generationConfig: { temperature: 0.6, maxOutputTokens: 1400 }
-    };
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.replace(/\*\*/g, '<b>') || null;
-  } catch {
-    return null;
-  }
-}
-
-async function callOpenRouter(apiKey, prompt) {
-  try {
-    const url = 'https://openrouter.ai/api/v1/chat/completions';
-    const payload = {
-      model: 'nousresearch/hermes-3-llama-3.1-405b:free',
-      messages: [
-        { role: 'system', content: UNCENSORED_SYSTEM_PROMPT },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 1200
-    };
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content?.replace(/\*\*/g, '<b>') || null;
-  } catch {
-    return null;
   }
 }
