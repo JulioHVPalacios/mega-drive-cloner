@@ -124,8 +124,7 @@ jobs:
               print(f"   -> {u}")
           print("="*70)
 
-          # Usar /mnt (disco NVMe de alto IOPS en Azure)
-          work_dir = f"/mnt/nodo_{nodo_id}_workdir" if os.path.exists("/mnt") else f"/tmp/nodo_{nodo_id}_workdir"
+          work_dir = f"/tmp/nodo_{nodo_id}_workdir"
           shutil.rmtree(work_dir, ignore_errors=True)
           os.makedirs(work_dir, exist_ok=True)
           local_filepath = os.path.join(work_dir, filename)
