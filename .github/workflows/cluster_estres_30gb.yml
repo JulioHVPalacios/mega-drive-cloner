@@ -1,4 +1,4 @@
-name: '⚡ Clúster Dual Turbo v5 (Máxima Velocidad y Cero Latencia)'
+name: '⚡ Clúster Dual Turbo v6 Hyper-Engine (Máxima Velocidad Física)'
 
 on:
   workflow_dispatch:
@@ -31,11 +31,11 @@ jobs:
       matrix:
         include:
           - nodo: 1
-            name: 'AlmaLinux 9 DVD (15.2GB)'
+            name: 'AlmaLinux 9 DVD (15.2GB Hyper-Engine)'
             filename: 'AlmaLinux-9-latest-x86_64-dvd.iso'
             urls: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso https://mirrors.ircam.fr/pub/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso https://mirror.nl.leaseweb.net/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso'
           - nodo: 2
-            name: 'Rocky Linux 9 DVD (15.2GB)'
+            name: 'Rocky Linux 9 DVD (15.2GB Hyper-Engine)'
             filename: 'Rocky-9-latest-x86_64-dvd.iso'
             urls: 'https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://rocky-linux-europe-west4.s3.nl-ams.scw.cloud/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://mirrors.ircam.fr/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://mirror.oxilion.nl/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso'
       fail-fast: false
@@ -54,16 +54,12 @@ jobs:
           echo "🚀 Algoritmo de congestión activo:"
           sysctl net.ipv4.tcp_congestion_control
 
-      - name: ⚡ Verificación Instantánea de Disco
+      - name: ⚡ Acelerador de Arranque (Instalación Binaria Directa sin APT Lag)
         run: |
-          echo "📊 Espacio disponible inmediato en runner de Azure:"
-          df -h /
-
-      - name: 🛠️ Instalar Dependencias (Instalación Ultrarrápida)
-        run: |
-          sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends aria2
-          curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null 2>&1
+          curl -fsSL https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone.zip
+          sudo unzip -q -j /tmp/rclone.zip '*/rclone' -d /usr/local/bin/
+          rm -f /tmp/rclone.zip
           rclone version
 
       - name: 🔐 Inyectar Credenciales de Rclone
@@ -74,7 +70,7 @@ jobs:
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
           rclone listremotes
 
-      - name: 🌪️ Ejecutar Transferencia en Nodo Dedicado (Turbo Engine)
+      - name: 🌪️ Ejecutar Transferencia Hyper-Engine (Multi-Stream + Chunks 512MB)
         env:
           NODO_ID: ${{ matrix.nodo }}
           ARCH_MODE: ${{ inputs.architecture_mode }}
@@ -95,12 +91,10 @@ jobs:
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
-          # Determinar remote según modo de arquitectura
           if arch_mode == 'midrive_only':
               target_remote = 'midrive'
               account_label = 'Julio Palacios (midrive - 100% Exclusivo)'
           else:
-              # Modo 'balanced': Nodo 1 -> midrive (Julio), Nodo 2 -> midrive2 (Vexor)
               if nodo_id == 1:
                   target_remote = 'midrive'
                   account_label = 'Julio Palacios (5TB - midrive)'
@@ -123,30 +117,31 @@ jobs:
 
           print("")
           print("="*70)
-          print(f"🚀 INICIANDO NODO {nodo_id} [TURBO v5]")
+          print(f"🚀 INICIANDO NODO {nodo_id} [HYPER-ENGINE v6]")
           print(f"🎯 Destino Físico: {dest_remote} ({account_label})")
-          print(f"🌐 Fuentes Multi-Mirror ({len(source_urls)} espejos):")
+          print(f"🌐 Fuentes Multi-Mirror ({len(source_urls)} espejos concurrentes):")
           for u in source_urls:
               print(f"   -> {u}")
           print("="*70)
 
-          work_dir = f"/tmp/nodo_{nodo_id}_workdir"
+          # Usar /mnt (disco NVMe de alto IOPS en Azure)
+          work_dir = f"/mnt/nodo_{nodo_id}_workdir" if os.path.exists("/mnt") else f"/tmp/nodo_{nodo_id}_workdir"
           shutil.rmtree(work_dir, ignore_errors=True)
           os.makedirs(work_dir, exist_ok=True)
           local_filepath = os.path.join(work_dir, filename)
 
           start_total = time.time()
 
-          # 1. Descarga multi-espejo en paralelo con Aria2c
-          print(f"⚡ [PASO 1] Descargando {filename} con Aria2c Turbo (16 hilos por servidor, multi-fuente)...")
+          # 1. Descarga Hyper-Stream con Aria2c (32 hilos concurrentes, 1MB min-split, 256MB cache)
+          print(f"⚡ [PASO 1] Descargando {filename} con Aria2c Hyper-Stream (32 hilos concurrentes)...")
           t_dl_start = time.time()
           aria2_cmd = [
               'aria2c',
               '--max-connection-per-server=16',
-              '--split=16',
-              '--min-split-size=4M',
+              '--split=32',
+              '--min-split-size=1M',
               '--file-allocation=none',
-              '--disk-cache=128M',
+              '--disk-cache=256M',
               '--summary-interval=10',
               '-d', work_dir,
               '-o', filename
@@ -161,20 +156,21 @@ jobs:
 
           print(f"✅ Descarga completada: {file_size_mb:.2f} MB en {dl_time:.1f}s ({dl_speed:.2f} MB/s)")
 
-          # 2. Subida optimizada a Google Drive con Rclone Turbo Flags
-          print(f"📤 [PASO 2] Subiendo {filename} hacia Google Drive ({dest_remote})...")
+          # 2. Subida Hyper-Engine a Google Drive (Bloques Gigantes de 512MB + No-Traverse + Buffer 256MB)
+          print(f"📤 [PASO 2] Inyectando {filename} a Google Drive con Chunks de 512MB...")
           t_up_start = time.time()
           rclone_cmd = [
               'rclone', 'copy',
               local_filepath, dest_remote,
-              '--drive-chunk-size=256M',
-              '--drive-upload-cutoff=256M',
+              '--drive-chunk-size=512M',
+              '--drive-upload-cutoff=512M',
               '--transfers=16',
               '--checkers=16',
               '--drive-pacer-min-sleep=10ms',
               '--drive-pacer-burst=200',
-              '--buffer-size=128M',
+              '--buffer-size=256M',
               '--use-mmap',
+              '--no-traverse',
               '--stats=10s',
               '--stats-one-line',
               '--retries=5',
@@ -186,9 +182,9 @@ jobs:
 
           print(f"🎉 Subida completada: {file_size_mb:.2f} MB en {up_time:.1f}s ({up_speed:.2f} MB/s)")
 
-          # Limpieza inmediata de disco en runner
+          # Limpieza inmediata de disco
           shutil.rmtree(work_dir, ignore_errors=True)
-          print("🧹 Disco de Azure liberado inmediatamente.")
+          print("🧹 Espacio local liberado inmediatamente.")
 
           elapsed_node = time.time() - start_total
           avg_speed = file_size_mb / max(elapsed_node, 0.001)
@@ -203,7 +199,7 @@ jobs:
           print("#"*70)
 
           notify_tg(
-              f"✅ <b>[NODO {nodo_id}] COMPLETADO [TURBO v5]</b>\n\n"
+              f"✅ <b>[NODO {nodo_id}] COMPLETADO [HYPER-ENGINE v6]</b>\n\n"
               f"📦 <b>Archivo:</b> {filename} ({file_size_gb:.2f} GB)\n"
               f"⏱️ <b>Tiempo de Nodo:</b> {elapsed_node / 60:.2f} min ({elapsed_node:.1f}s)\n"
               f"⬇️ <b>Descarga:</b> {dl_speed:.1f} MB/s ({dl_time:.1f}s)\n"
@@ -219,9 +215,9 @@ jobs:
     steps:
       - name: 🛠️ Instalar Rclone Oficial
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends curl
-          curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null 2>&1
+          curl -fsSL https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone.zip
+          sudo unzip -q -j /tmp/rclone.zip '*/rclone' -d /usr/local/bin/
+          rm -f /tmp/rclone.zip
           rclone version
 
       - name: 🔐 Inyectar Credenciales de Rclone
@@ -315,10 +311,10 @@ jobs:
                   subprocess.run(['rclone', 'size', f'{r}:DESCARGAS_UNIVERSALES'])
 
           notify_tg(
-              f"🏆 <b>¡CLÚSTER DUAL TURBO v5 FINALIZADO Y CERTIFICADO!</b>\n\n"
+              f"🏆 <b>¡CLÚSTER HYPER-ENGINE v6 FINALIZADO Y CERTIFICADO!</b>\n\n"
               f"📦 <b>Volumen Total Auditado:</b> {total_gb:.2f} GB ({total_count} objetos)\n"
               f"⚡ <b>Modo:</b> {arch_mode.upper()} (2 Servidores Azure en Paralelo)\n"
               f"🛡️ <b>Purga Post-Auditoría:</b> {'Ejecutada (Tus Drives 100% limpios)' if purge else 'Archivos conservados'}\n"
-              f"🚀 <b>Resultado:</b> Máxima velocidad simétrica alcanzada"
+              f"🚀 <b>Resultado:</b> Máxima velocidad física demostrable alcanzada"
           )
           EOF
