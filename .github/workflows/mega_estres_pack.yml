@@ -6,9 +6,8 @@ on:
       pack_selection:
         description: '📦 Selecciona el lote de prueba a ejecutar'
         required: true
-        default: 'Lote 1 (30.5 GB: AlmaLinux 9 DVD + Rocky Linux 9 DVD + BitTorrent Sintel)'
-        type: choice
         options:
+          - 'Paquete Masivo 30.5 GB (AlmaLinux 15.2GB + Rocky Linux 15.2GB + Sintel - Chunks 256MB)'
           - 'Híbrido Todo-en-Uno (Video HD + ISOs + BitTorrent + Subtítulos + Art - 4.1 GB)'
           - 'Lote 1 (15.3 GB: AlmaLinux 9 Enterprise DVD + BitTorrent Sintel)'
           - 'Lote 2 (15.2 GB: Rocky Linux 9 Enterprise DVD)'
@@ -22,7 +21,7 @@ on:
       destination_folder:
         description: '📁 Carpeta de destino en Google Drive'
         required: true
-        default: 'DESCARGAS_UNIVERSALES/test_estres_hibrido'
+        default: 'DESCARGAS_UNIVERSALES/test_estres_30gb_v2'
         type: string
 
 jobs:
@@ -173,7 +172,9 @@ jobs:
           ]
 
           items_to_process = []
-          if "Híbrido" in pack_sel:
+          if "Paquete Masivo 30.5" in pack_sel:
+              items_to_process = manifest_lote_1 + manifest_lote_2
+          elif "Híbrido" in pack_sel:
               items_to_process = manifest_hibrido
           elif "Lote 1" in pack_sel:
               items_to_process = manifest_lote_1
