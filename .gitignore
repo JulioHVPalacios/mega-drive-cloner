@@ -10,3 +10,5 @@ backup_credenciales/
 *.log
 __pycache__/
 *.pyc
+gemini_api_key.txt
+*api_key*
