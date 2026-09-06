@@ -1,4 +1,4 @@
-name: '⚡ Clúster Dual Turbo v6 Hyper-Engine (Máxima Velocidad Física)'
+name: '⚡ Clúster Dual Turbo v7 Apex (Descarga 32-Stream + Subida 256M)'
 
 on:
   workflow_dispatch:
@@ -31,11 +31,11 @@ jobs:
       matrix:
         include:
           - nodo: 1
-            name: 'AlmaLinux 9 DVD (15.2GB Hyper-Engine)'
+            name: 'AlmaLinux 9 DVD (15.2GB Apex-Engine)'
             filename: 'AlmaLinux-9-latest-x86_64-dvd.iso'
             urls: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso https://mirrors.ircam.fr/pub/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso https://mirror.nl.leaseweb.net/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso'
           - nodo: 2
-            name: 'Rocky Linux 9 DVD (15.2GB Hyper-Engine)'
+            name: 'Rocky Linux 9 DVD (15.2GB Apex-Engine)'
             filename: 'Rocky-9-latest-x86_64-dvd.iso'
             urls: 'https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://rocky-linux-europe-west4.s3.nl-ams.scw.cloud/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://mirrors.ircam.fr/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://mirror.oxilion.nl/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso'
       fail-fast: false
@@ -70,7 +70,7 @@ jobs:
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
           rclone listremotes
 
-      - name: 🌪️ Ejecutar Transferencia Hyper-Engine (Multi-Stream + Chunks 512MB)
+      - name: 🌪️ Ejecutar Transferencia Apex-Engine (Descarga 32-Stream + Chunks 256MB)
         env:
           NODO_ID: ${{ matrix.nodo }}
           ARCH_MODE: ${{ inputs.architecture_mode }}
@@ -117,7 +117,7 @@ jobs:
 
           print("")
           print("="*70)
-          print(f"🚀 INICIANDO NODO {nodo_id} [HYPER-ENGINE v6]")
+          print(f"🚀 INICIANDO NODO {nodo_id} [APEX-ENGINE v7]")
           print(f"🎯 Destino Físico: {dest_remote} ({account_label})")
           print(f"🌐 Fuentes Multi-Mirror ({len(source_urls)} espejos concurrentes):")
           for u in source_urls:
@@ -131,16 +131,16 @@ jobs:
 
           start_total = time.time()
 
-          # 1. Descarga Hyper-Stream con Aria2c (32 hilos concurrentes, 1MB min-split, 256MB cache)
-          print(f"⚡ [PASO 1] Descargando {filename} con Aria2c Hyper-Stream (32 hilos concurrentes)...")
+          # 1. Descarga Apex Multi-Stream con Aria2c (32 hilos concurrentes, 128MB RAM cache)
+          print(f"⚡ [PASO 1] Descargando {filename} con Aria2c Multi-Stream (32 hilos concurrentes)...")
           t_dl_start = time.time()
           aria2_cmd = [
               'aria2c',
               '--max-connection-per-server=16',
               '--split=32',
-              '--min-split-size=1M',
+              '--min-split-size=5M',
               '--file-allocation=none',
-              '--disk-cache=256M',
+              '--disk-cache=128M',
               '--summary-interval=10',
               '-d', work_dir,
               '-o', filename
@@ -155,19 +155,19 @@ jobs:
 
           print(f"✅ Descarga completada: {file_size_mb:.2f} MB en {dl_time:.1f}s ({dl_speed:.2f} MB/s)")
 
-          # 2. Subida Hyper-Engine a Google Drive (Bloques Gigantes de 512MB + No-Traverse + Buffer 256MB)
-          print(f"📤 [PASO 2] Inyectando {filename} a Google Drive con Chunks de 512MB...")
+          # 2. Subida Óptima a Google Drive con Chunks de 256MB (Punto Óptimo Físico de GFE)
+          print(f"📤 [PASO 2] Inyectando {filename} a Google Drive con Chunks de 256MB...")
           t_up_start = time.time()
           rclone_cmd = [
               'rclone', 'copy',
               local_filepath, dest_remote,
-              '--drive-chunk-size=512M',
-              '--drive-upload-cutoff=512M',
+              '--drive-chunk-size=256M',
+              '--drive-upload-cutoff=256M',
               '--transfers=16',
               '--checkers=16',
               '--drive-pacer-min-sleep=10ms',
               '--drive-pacer-burst=200',
-              '--buffer-size=256M',
+              '--buffer-size=128M',
               '--use-mmap',
               '--no-traverse',
               '--stats=10s',
@@ -181,7 +181,7 @@ jobs:
 
           print(f"🎉 Subida completada: {file_size_mb:.2f} MB en {up_time:.1f}s ({up_speed:.2f} MB/s)")
 
-          # Limpieza inmediata de disco
+          # Limpieza inmediata de disco en runner
           shutil.rmtree(work_dir, ignore_errors=True)
           print("🧹 Espacio local liberado inmediatamente.")
 
@@ -198,11 +198,11 @@ jobs:
           print("#"*70)
 
           notify_tg(
-              f"✅ <b>[NODO {nodo_id}] COMPLETADO [HYPER-ENGINE v6]</b>\n\n"
+              f"✅ <b>[NODO {nodo_id}] COMPLETADO [APEX-ENGINE v7]</b>\n\n"
               f"📦 <b>Archivo:</b> {filename} ({file_size_gb:.2f} GB)\n"
               f"⏱️ <b>Tiempo de Nodo:</b> {elapsed_node / 60:.2f} min ({elapsed_node:.1f}s)\n"
-              f"⬇️ <b>Descarga:</b> {dl_speed:.1f} MB/s ({dl_time:.1f}s)\n"
-              f"⬆️ <b>Subida a Drive:</b> {up_speed:.1f} MB/s ({up_time:.1f}s)\n"
+              f"⬇️ <b>Descarga (32 streams):</b> {dl_speed:.1f} MB/s ({dl_time:.1f}s)\n"
+              f"⬆️ <b>Subida a Drive (256M chunks):</b> {up_speed:.1f} MB/s ({up_time:.1f}s)\n"
               f"☁️ <b>Destino:</b> <code>{dest_remote}</code> ({account_label})"
           )
           EOF
@@ -310,10 +310,10 @@ jobs:
                   subprocess.run(['rclone', 'size', f'{r}:DESCARGAS_UNIVERSALES'])
 
           notify_tg(
-              f"🏆 <b>¡CLÚSTER HYPER-ENGINE v6 FINALIZADO Y CERTIFICADO!</b>\n\n"
+              f"🏆 <b>¡CLÚSTER APEX-ENGINE v7 FINALIZADO Y CERTIFICADO!</b>\n\n"
               f"📦 <b>Volumen Total Auditado:</b> {total_gb:.2f} GB ({total_count} objetos)\n"
               f"⚡ <b>Modo:</b> {arch_mode.upper()} (2 Servidores Azure en Paralelo)\n"
               f"🛡️ <b>Purga Post-Auditoría:</b> {'Ejecutada (Tus Drives 100% limpios)' if purge else 'Archivos conservados'}\n"
-              f"🚀 <b>Resultado:</b> Máxima velocidad física demostrable alcanzada"
+              f"🚀 <b>Resultado:</b> Fusión Óptima (Descarga 32-Stream + Subida 256MB Chunks)"
           )
           EOF
