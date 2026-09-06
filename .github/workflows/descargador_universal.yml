@@ -210,7 +210,7 @@ jobs:
               '--fast-list',
               '--transfers=16',
               '--checkers=32',
-              '--buffer-size=64M',
+              '--buffer-size=128M',
               '--use-mmap',
               '--multi-thread-streams=16',
               '--multi-thread-cutoff=32M',
@@ -222,7 +222,7 @@ jobs:
 
           if 'midrive' in dest_remote:
               turbo_flags.extend([
-                  '--drive-chunk-size=128M',
+                  '--drive-chunk-size=256M',
                   '--drive-pacer-min-sleep=10ms',
                   '--drive-pacer-burst=200'
               ])
