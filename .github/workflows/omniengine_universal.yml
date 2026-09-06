@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       engine_mode:
-        description: 'Selecciona el Modo de Ingesta (Benchmark 30 GB)'
+        description: 'Selecciona el Modo (Benchmark 30 GB o Compartir Instantáneo)'
         required: true
         default: 'megapack_heterogeneo_30gb'
         type: choice
@@ -13,8 +13,9 @@ on:
           - 'megapack_swarm'
           - 'archive_cloud_extract'
           - 'monolithic_stream'
+          - 'quick_share_drive_folder'
       destination_account:
-        description: 'Cuenta de Google Drive destino'
+        description: 'Cuenta de Google Drive destino / origen'
         required: true
         default: 'both'
         type: choice
@@ -23,9 +24,22 @@ on:
           - 'midrive'
           - 'midrive2'
       destination_folder:
-        description: 'Carpeta de prueba en Google Drive'
+        description: 'Carpeta en Google Drive (ej: MEGAPACK_PROGRAMACION_COMPLETO o DESCARGAS_UNIVERSALES)'
         required: true
         default: 'DESCARGAS_UNIVERSALES/MEGAPACK_HETEROGENEO_30GB'
+      recipient_email:
+        description: '📧 Correo Google para compartir acceso instantáneo sin configuración para terceros (opcional)'
+        required: false
+        default: ''
+        type: string
+      share_role:
+        description: '🔑 Rol para el destinatario (reader = solo ver/descargar, writer = editar)'
+        required: false
+        default: 'reader'
+        type: choice
+        options:
+          - 'reader'
+          - 'writer'
       archive_password:
         description: 'Contraseña para archivos RAR / ZIP / 7z (si aplica)'
         required: false
@@ -344,6 +358,9 @@ jobs:
     if: always() && inputs.engine_mode == 'megapack_heterogeneo_30gb'
     runs-on: ubuntu-latest
     steps:
+      - name: 📥 Clonar Repositorio
+        uses: actions/checkout@v4
+
       - name: ⚡ Instalar Rclone
         run: |
           curl -fsSL https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone.zip
@@ -362,15 +379,20 @@ jobs:
           DEST_FOLDER: ${{ inputs.destination_folder }}
           DEST_ACC_INPUT: ${{ inputs.destination_account }}
           PURGE_AFTER: ${{ inputs.purge_after_test }}
+          RECIPIENT_EMAIL: ${{ inputs.recipient_email }}
+          SHARE_ROLE: ${{ inputs.share_role }}
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
           import os, subprocess, json, urllib.request, time
+          import share_drive_folder
 
           folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/MEGAPACK_HETEROGENEO_30GB').strip()
           dest_acc = os.environ.get('DEST_ACC_INPUT', 'both').strip()
           purge = os.environ.get('PURGE_AFTER', 'true').lower() == 'true'
+          recipient_email = os.environ.get('RECIPIENT_EMAIL', '').strip()
+          share_role = os.environ.get('SHARE_ROLE', 'reader').strip()
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
@@ -439,6 +461,16 @@ jobs:
           ]
           for ext, sz in sorted(cat_breakdown.items()):
               tg_lines.append(f"  • <code>{ext}</code>: {sz/(1024**3):.2f} GB ({sz/(1024**2):.1f} MB)")
+
+          if recipient_email and not purge:
+              acc_share = accounts_to_check[0]
+              print(f"🤝 Compartiendo acceso automáticamente con {recipient_email} en {acc_share}...")
+              ok_share, share_url = share_drive_folder.share_folder(folder, recipient_email, role=share_role, remote=acc_share, send_notification=True)
+              if ok_share:
+                  tg_lines.append("")
+                  tg_lines.append(f"🤝 <b>Compartido con Tercero:</b> <code>{recipient_email}</code>")
+                  tg_lines.append(f"🔗 <a href='{share_url}'>Abrir en Google Drive</a>")
+                  tg_lines.append("ℹ️ <i>Aparece en 'Compartido conmigo' sin configuraciones.</i>")
 
           if purge:
               print("🧹 Ejecutando Purga Automática Post-Test en Google Drive...")
@@ -1038,4 +1070,77 @@ jobs:
 
           total_gb = total_bytes / (1024**3)
           notify_tg(f"🏁 <b>[STREAM AUDITORÍA]</b>\nTotal Transferido: {total_gb:.2f} GB ({total_bytes:,} B)\nTiempo Clúster: (Menos de 4 Minutos)\nPurga: {'Realizada' if purge else 'Omitida'}")
+          EOF
+
+  # =========================================================================
+  # MODO 4: COMPARTIR CARPETA INSTANTÁNEO (< 15s) SIN DESCARGAS NI SUBIDAS
+  # Otorgar acceso oficial en Google Drive a cualquier tercero por correo
+  # =========================================================================
+  quick_share_drive_folder:
+    name: '⚡ Compartir Carpeta Instantáneo (< 15s) ➔ ${{ inputs.recipient_email }}'
+    if: inputs.engine_mode == 'quick_share_drive_folder'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Clonar Repositorio
+        uses: actions/checkout@v4
+
+      - name: 🔐 Inyectar Credenciales de Rclone
+        env:
+          RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
+
+      - name: ⚡ Otorgar Permiso Oficial en Google Drive API
+        env:
+          DEST_FOLDER: ${{ inputs.destination_folder }}
+          DEST_ACC: ${{ inputs.destination_account }}
+          RECIPIENT_EMAIL: ${{ inputs.recipient_email }}
+          SHARE_ROLE: ${{ inputs.share_role }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
+          import os, sys, json, urllib.request
+          import share_drive_folder
+
+          folder = os.environ.get('DEST_FOLDER', 'MEGAPACK_PROGRAMACION_COMPLETO').strip()
+          dest_acc = os.environ.get('DEST_ACC', 'midrive').strip()
+          if dest_acc == 'both':
+              dest_acc = 'midrive'
+          email = os.environ.get('RECIPIENT_EMAIL', '').strip()
+          role = os.environ.get('SHARE_ROLE', 'reader').strip()
+          tg_token = os.environ.get('TG_TOKEN', '').strip()
+          tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
+
+          if not email:
+              print("[-] Error: recipient_email es obligatorio para quick_share_drive_folder")
+              sys.exit(1)
+
+          def notify_tg(text):
+              if not tg_token or not tg_chat_id:
+                  return
+              try:
+                  url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
+                  data = json.dumps({"chat_id": tg_chat_id, "text": text, "parse_mode": "HTML"}).encode('utf-8')
+                  req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+                  urllib.request.urlopen(req, timeout=10)
+              except Exception as e:
+                  print(f"Error TG: {e}")
+
+          ok, link = share_drive_folder.share_folder(folder, email, role=role, remote=dest_acc, send_notification=True)
+          if ok:
+              role_txt = "👁️ Solo Lectura (Ver y Descargar)" if role == 'reader' else "✏️ Lectura y Escritura (Editar/Subir)"
+              msg = (
+                  "🎉 <b>¡CARPETA COMPARTIDA CON ÉXITO EN GOOGLE DRIVE!</b>\n\n"
+                  f"📁 <b>Carpeta:</b> <code>{folder}</code>\n"
+                  f"👤 <b>Destinatario:</b> <code>{email}</code>\n"
+                  f"🔑 <b>Rol Asignado:</b> {role_txt}\n"
+                  f"🔗 <a href='{link}'>Enlace Oficial de Google Drive</a>\n\n"
+                  "ℹ️ <i>Google ha enviado la notificación oficial a su correo y la carpeta ya está disponible en su sección 'Compartido conmigo'. El destinatario no necesita Rclone ni configurar nada.</i>"
+              )
+              notify_tg(msg)
+          else:
+              notify_tg(f"❌ <b>Error al compartir carpeta:</b> No se pudo compartir <code>{folder}</code> con <code>{email}</code>.")
+              sys.exit(1)
           EOF
