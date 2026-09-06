@@ -8,11 +8,6 @@ on:
         required: true
         default: 'DESCARGAS_UNIVERSALES/test_cluster_30gb_v4'
         type: string
-      balance_targets:
-        description: '⚖️ ¿Balancear carga entre Julio (5TB) y Vexor (5TB) para máxima velocidad de Google?'
-        required: true
-        default: true
-        type: boolean
       purge_after_test:
         description: '🧹 ¿Purgar tras auditar? (true = conserva tus 4.25 TB libres)'
         required: true
@@ -70,7 +65,6 @@ jobs:
         env:
           NODO_ID: ${{ matrix.nodo }}
           DEST_FOLDER: ${{ inputs.destination_folder }}
-          BALANCE_TARGETS: ${{ inputs.balance_targets }}
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
@@ -79,17 +73,11 @@ jobs:
 
           nodo_id = int(os.environ.get('NODO_ID', '1'))
           base_folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/test_cluster_30gb_v4').strip()
-          balance = os.environ.get('BALANCE_TARGETS', 'true').lower() == 'true'
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
-          if balance:
-              target_remote_name = 'midrive' if nodo_id == 1 else 'midrive2'
-              account_label = 'Julio (5TB)' if nodo_id == 1 else 'Vexor (5TB)'
-          else:
-              target_remote_name = 'midrive'
-              account_label = 'Julio (5TB)'
-
+          target_remote_name = 'midrive'
+          account_label = 'Julio (5TB - midrive)'
           dest_remote = f'{target_remote_name}:{base_folder}/nodo_{nodo_id}'
           print(f"🎯 [NODO {nodo_id}] Cuenta Google: {account_label} | Destino: {dest_remote}")
 
@@ -262,7 +250,6 @@ jobs:
       - name: 🏆 Auditoría Global en Google Drive
         env:
           DEST_FOLDER: ${{ inputs.destination_folder }}
-          BALANCE_TARGETS: ${{ inputs.balance_targets }}
           PURGE_AFTER: ${{ inputs.purge_after_test }}
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -271,17 +258,14 @@ jobs:
           import os, subprocess, json, urllib.request
 
           folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/test_cluster_30gb_v4').strip()
-          balance = os.environ.get('BALANCE_TARGETS', 'true').lower() == 'true'
           purge = os.environ.get('PURGE_AFTER', 'true').lower() == 'true'
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
-          targets = []
-          if balance:
-              targets.append(('Julio (midrive)', f'midrive:{folder}/nodo_1'))
-              targets.append(('Vexor (midrive2)', f'midrive2:{folder}/nodo_2'))
-          else:
-              targets.append(('Julio (midrive)', f'midrive:{folder}'))
+          targets = [
+              ('Julio (midrive - Nodo 1)', f'midrive:{folder}/nodo_1'),
+              ('Julio (midrive - Nodo 2)', f'midrive:{folder}/nodo_2')
+          ]
 
           def notify_tg(text):
               if not tg_token or not tg_chat_id:
@@ -296,7 +280,7 @@ jobs:
 
           print("")
           print("="*70)
-          print("📊 AUDITORÍA FORENSE CONSOLIDADA DE AMBAS CUENTAS EN GOOGLE DRIVE:")
+          print("📊 AUDITORÍA FORENSE DE LA PRUEBA EN GOOGLE DRIVE (midrive):")
           print("="*70)
 
           total_bytes = 0
@@ -325,20 +309,20 @@ jobs:
 
           if purge:
               print("")
-              print("🧹 Purgando carpetas de prueba para no ocupar almacenamiento libre...")
+              print("🧹 Purgando carpeta de prueba en midrive para no ocupar almacenamiento libre...")
               for label, remote in targets:
                   print(f"   -> Purgando {label}: {remote}...")
                   subprocess.run(['rclone', 'purge', remote], check=True)
+              # También purgar la raíz de la prueba si está vacía
+              subprocess.run(['rclone', 'rmdirs', f'midrive:{folder}'])
               print("✅ Limpieza completada. Verificando estado final:")
               subprocess.run(['rclone', 'size', 'midrive:DESCARGAS_UNIVERSALES'])
-              if balance:
-                  subprocess.run(['rclone', 'size', 'midrive2:DESCARGAS_UNIVERSALES'])
 
           notify_tg(
-              f"🏆 <b>¡CLÚSTER MULTI-SERVIDOR BALANCEADO AL 100%!</b>\n\n"
+              f"🏆 <b>¡CLÚSTER MULTI-SERVIDOR 100% MIDRIVE (JULIO) FINALIZADO!</b>\n\n"
               f"📦 <b>Volumen Total Auditado en Google Drive:</b> {total_gb:.2f} GB ({total_count} objetos)\n"
-              f"⚡ <b>Arquitectura:</b> 2 Servidores Azure en Paralelo (Julio 5TB + Vexor 5TB)\n"
-              f"🛡️ <b>Purga Post-Auditoría:</b> {'Ejecutada (Tus Drives limpios)' if purge else 'Archivos conservados'}\n"
-              f"🚀 <b>Resultado:</b> Doble ancho de banda y cuota 1.5 TB/día"
+              f"⚡ <b>Arquitectura:</b> 2 Servidores Azure en Paralelo hacia midrive (Julio)\n"
+              f"🛡️ <b>Purga Post-Auditoría:</b> {'Ejecutada (midrive 100% limpio)' if purge else 'Archivos conservados'}\n"
+              f"🚀 <b>Resultado:</b> Ambos nodos a máxima velocidad con Client ID dedicado"
           )
           EOF
