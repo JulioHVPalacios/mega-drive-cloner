@@ -1,4 +1,4 @@
-name: '⚡ Clúster Dual Balanceado 30 GB (1 Julio + 1 Vexor a 90 MB/s)'
+name: ⚡ Clúster Multi-Servidor 30.5 GB (Enjambre Azure en Paralelo)
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         default: 'DESCARGAS_UNIVERSALES/test_cluster_30gb_v4'
         type: string
       purge_after_test:
-        description: '🧹 ¿Purgar tras auditar? (true = conserva tus 10 TB libres)'
+        description: '🧹 ¿Purgar tras auditar? (true = conserva tus 4.25 TB libres)'
         required: true
         default: true
         type: boolean
@@ -23,19 +23,9 @@ jobs:
       matrix:
         include:
           - nodo: 1
-            name: 'AlmaLinux 9 (15.2GB) ➔ Julio (midrive)'
-            target: 'midrive'
-            account: 'Julio Palacios (5TB - midrive)'
-            filename: 'AlmaLinux-9-latest-x86_64-dvd.iso'
-            url: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso'
-            size_mb: 15152
+            name: 'AlmaLinux 9 (15.2GB) + Sintel P2P'
           - nodo: 2
-            name: 'Rocky Linux 9 (15.2GB) ➔ Vexor (midrive2)'
-            target: 'midrive2'
-            account: 'Vexor Group (5TB - midrive2)'
-            filename: 'Rocky-9-latest-x86_64-dvd.iso'
-            url: 'https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso'
-            size_mb: 15194
+            name: 'Rocky Linux 9 (15.2GB Enterprise)'
       fail-fast: false
 
     steps:
@@ -74,11 +64,6 @@ jobs:
       - name: 🌪️ Ejecutar Transferencia en Nodo Dedicado (Turbo Engine)
         env:
           NODO_ID: ${{ matrix.nodo }}
-          TARGET_REMOTE: ${{ matrix.target }}
-          ACCOUNT_LABEL: ${{ matrix.account }}
-          FILENAME: ${{ matrix.filename }}
-          SOURCE_URL: ${{ matrix.url }}
-          SIZE_MB: ${{ matrix.size_mb }}
           DEST_FOLDER: ${{ inputs.destination_folder }}
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -87,15 +72,12 @@ jobs:
           import os, time, subprocess, shutil, json, urllib.request
 
           nodo_id = int(os.environ.get('NODO_ID', '1'))
-          target_remote_name = os.environ.get('TARGET_REMOTE', 'midrive').strip()
-          account_label = os.environ.get('ACCOUNT_LABEL', 'Google Drive').strip()
-          filename = os.environ.get('FILENAME', 'payload.iso').strip()
-          source_url = os.environ.get('SOURCE_URL', '').strip()
-          size_mb = float(os.environ.get('SIZE_MB', '15000'))
           base_folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/test_cluster_30gb_v4').strip()
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
+          target_remote_name = 'midrive'
+          account_label = 'Julio (5TB - midrive)'
           dest_remote = f'{target_remote_name}:{base_folder}/nodo_{nodo_id}'
           print(f"🎯 [NODO {nodo_id}] Cuenta Google: {account_label} | Destino: {dest_remote}")
 
@@ -110,96 +92,146 @@ jobs:
               except Exception as e:
                   print(f"⚠️ Error enviando Telegram: {e}")
 
+          if nodo_id == 1:
+              items = [
+                  {
+                      "name": "Sintel P2P BitTorrent HD Pack (Video + Subs + Art)",
+                      "type": "torrent",
+                      "source": "https://webtorrent.io/torrents/sintel.torrent",
+                      "est_size_mb": 129
+                  },
+                  {
+                      "name": "AlmaLinux 9 Enterprise DVD ISO",
+                      "type": "aria2",
+                      "source": "https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso",
+                      "filename": "AlmaLinux-9-latest-x86_64-dvd.iso",
+                      "est_size_mb": 15152
+                  }
+              ]
+          else:
+              items = [
+                  {
+                      "name": "Rocky Linux 9 Enterprise DVD ISO",
+                      "type": "aria2",
+                      "source": "https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso",
+                      "filename": "Rocky-9-latest-x86_64-dvd.iso",
+                      "est_size_mb": 15194
+                  }
+              ]
+
+          total_est_mb = sum(x["est_size_mb"] for x in items)
+          print(f"📊 [NODO {nodo_id}] Total asignado: {len(items)} items ({total_est_mb / 1024:.2f} GB)")
+
           msg_lines = [
-              f"🚀 <b>CLÚSTER DUAL SIMÉTRICO - NODO {nodo_id} EN LÍNEA</b>",
-              f"📦 <b>Archivo Masivo:</b> {filename} ({size_mb / 1024:.2f} GB)",
-              f"☁️ <b>Destino Exclusivo:</b> <code>{dest_remote}</code> ({account_label})",
-              f"⚡ <b>Tecnología:</b> Canal Puro Incontestado a 90 MB/s"
+              f"🚀 <b>CLÚSTER NODO {nodo_id} EN LÍNEA</b>",
+              f"📦 <b>Carga:</b> {total_est_mb / 1024:.2f} GB",
+              f"☁️ <b>Destino:</b> <code>{dest_remote}</code> ({account_label})",
+              f"⚡ <b>Tecnología:</b> Azure Cloud VM Dedicada + BBR + Chunks 256MB + TPS Limit 12"
           ]
           notify_tg("\n".join(msg_lines))
 
           work_dir = f"/tmp/nodo_{nodo_id}_workdir"
           os.makedirs(work_dir, exist_ok=True)
 
-          start_node_total = time.time()
-
-          print("")
-          print("="*70)
-          print(f"🔄 [NODO {nodo_id}] DESCARGANDO: {filename} ({size_mb / 1024:.2f} GB)")
-          print("="*70)
-
-          dl_start = time.time()
-          subprocess.run([
-              'aria2c',
-              '-s', '16',
-              '-x', '16',
-              '-k', '1M',
-              '--file-allocation=none',
-              '--summary-interval=5',
-              '-d', work_dir,
-              '-o', filename,
-              source_url
-          ], check=True)
-          dl_time = time.time() - dl_start
-
-          filepath = os.path.join(work_dir, filename)
-          dl_size_bytes = os.path.getsize(filepath)
-          dl_size_mb = dl_size_bytes / (1024 * 1024)
-          dl_speed_mbs = dl_size_mb / dl_time if dl_time > 0 else 0
-          print(f"✅ Descarga completada: {dl_size_mb:.2f} MB en {dl_time:.1f}s ({dl_speed_mbs:.2f} MB/s)")
-
-          print("")
-          print("="*70)
-          print(f"📤 [NODO {nodo_id}] SUBIENDO A GOOGLE DRIVE ({dest_remote})...")
-          print("="*70)
-
           rclone_turbo_flags = [
               '--fast-list',
               '--transfers=16',
               '--checkers=32',
               '--buffer-size=128M',
-              '--drive-chunk-size=128M',
-              '--drive-upload-cutoff=128M',
+              '--use-mmap',
+              '--drive-chunk-size=256M',
+              '--drive-pacer-min-sleep=10ms',
+              '--drive-pacer-burst=200',
               '--tpslimit=12',
-              '--tpslimit-burst=20',
-              '--stats=10s',
-              '--stats-one-line'
+              '--retries=5',
+              '--low-level-retries=10'
           ]
 
-          up_start = time.time()
-          subprocess.run([
-              'rclone', 'copy',
-              filepath, dest_remote
-          ] + rclone_turbo_flags, check=True)
-          up_time = time.time() - up_start
-          up_speed_mbs = dl_size_mb / up_time if up_time > 0 else 0
-          print(f"🎉 Subida completada: en {up_time:.1f}s ({up_speed_mbs:.2f} MB/s)")
+          total_bytes_transferred = 0
+          start_time = time.time()
 
-          shutil.rmtree(work_dir, ignore_errors=True)
-          print("🧹 Disco de Azure liberado inmediatamente.")
+          for idx, item in enumerate(items, 1):
+              print("")
+              print("="*70)
+              print(f"🔄 [NODO {nodo_id}] [{idx}/{len(items)}] PROCESANDO: {item['name']}")
+              print("="*70)
 
-          total_node_time = time.time() - start_node_total
-          total_gb = dl_size_bytes / (1024 * 1024 * 1024)
-          avg_speed = dl_size_mb / total_node_time if total_node_time > 0 else 0
+              item_dir = os.path.join(work_dir, f"item_{idx}")
+              os.makedirs(item_dir, exist_ok=True)
+              t0 = time.time()
+
+              if item["type"] == "torrent":
+                  print(f"🧲 Descargando Torrent P2P con Aria2c: {item['source']}...")
+                  subprocess.run([
+                      'aria2c',
+                      '--seed-time=0',
+                      '--max-connection-per-server=16',
+                      '--split=16',
+                      '--min-split-size=1M',
+                      '--file-allocation=none',
+                      '--disk-cache=64M',
+                      '--enable-dht=true',
+                      '--summary-interval=10',
+                      '-d', item_dir,
+                      item['source']
+                  ], check=True)
+              else:
+                  print(f"⚡ Descargando vía Aria2c (16 hilos, zero pre-allocation): {item['source']}...")
+                  subprocess.run([
+                      'aria2c',
+                      '--max-connection-per-server=16',
+                      '--split=16',
+                      '--min-split-size=4M',
+                      '--file-allocation=none',
+                      '--disk-cache=64M',
+                      '-d', item_dir,
+                      '-o', item["filename"],
+                      item['source']
+                  ], check=True)
+
+              dl_time = time.time() - t0
+              item_size_bytes = sum(os.path.getsize(os.path.join(r, f)) for r, d, fs in os.walk(item_dir) for f in fs)
+              total_bytes_transferred += item_size_bytes
+              dl_speed_mb = (item_size_bytes / (1024*1024)) / max(dl_time, 0.001)
+
+              print(f"✅ Descarga completada: {item_size_bytes / (1024*1024):.2f} MB en {dl_time:.1f}s ({dl_speed_mb:.2f} MB/s)")
+
+              t_up = time.time()
+              print(f"📤 Subiendo a Google Drive ({dest_remote})...")
+              subprocess.run(['rclone', 'copy', item_dir, dest_remote] + rclone_turbo_flags + ['-P', '--stats', '10s'], check=True)
+              up_time = time.time() - t_up
+              up_speed_mb = (item_size_bytes / (1024*1024)) / max(up_time, 0.001)
+
+              print(f"🎉 Subida completada: en {up_time:.1f}s ({up_speed_mb:.2f} MB/s)")
+
+              shutil.rmtree(item_dir)
+              print("🧹 Disco de Azure liberado inmediatamente.")
+
+              notify_tg(
+                  f"✅ <b>[NODO {nodo_id}] Ítem Completado:</b> <code>{item['name']}</code>\n"
+                  f"📊 {item_size_bytes / (1024*1024*1024):.2f} GB | ⬇️ {dl_speed_mb:.1f} MB/s | ⬆️ {up_speed_mb:.1f} MB/s"
+              )
+
+          elapsed = time.time() - start_time
+          total_gb = total_bytes_transferred / (1024*1024*1024)
+          avg_speed = (total_bytes_transferred / (1024*1024)) / max(elapsed, 0.001)
 
           print("")
           print("#"*70)
           print(f"🏆 [NODO {nodo_id}] FINALIZADO EXITOSAMENTE:")
-          print(f"📦 Transferido: {total_gb:.2f} GB en {total_node_time / 60:.2f} minutos ({avg_speed:.2f} MB/s)")
+          print(f"📦 Transferido: {total_gb:.2f} GB en {elapsed / 60:.2f} minutos ({avg_speed:.2f} MB/s)")
           print("#"*70)
 
           notify_tg(
-              f"✅ <b>NODO {nodo_id} COMPLETADO (CLÚSTER DUAL SIMÉTRICO)</b>\n\n"
-              f"📦 <b>Archivo:</b> {filename} ({total_gb:.2f} GB)\n"
-              f"⏱️ <b>Tiempo de Nodo:</b> {total_node_time / 60:.2f} minutos ({total_node_time:.1f}s)\n"
-              f"⚡ <b>Velocidad Subida:</b> {up_speed_mbs:.2f} MB/s\n"
-              f"☁️ <b>Destino Físico:</b> <code>{dest_remote}</code> ({account_label})"
+              f"🏁 <b>[NODO {nodo_id}] FINALIZADO</b>\n"
+              f"📦 <b>Volumen:</b> {total_gb:.2f} GB\n"
+              f"⏱️ <b>Tiempo de este nodo:</b> {elapsed / 60:.2f} min ({avg_speed:.1f} MB/s)"
           )
           EOF
 
-  consolidacion_y_auditoria:
+  cluster_auditoria_y_purga:
     name: 🏆 Auditoría Consolidada y Certificación de Integridad
-    needs: cluster_nodos
+    needs: [cluster_nodos]
     runs-on: ubuntu-latest
     steps:
       - name: 🛠️ Instalar Rclone Oficial
@@ -232,7 +264,7 @@ jobs:
 
           targets = [
               ('Julio (midrive - Nodo 1)', f'midrive:{folder}/nodo_1'),
-              ('Vexor (midrive2 - Nodo 2)', f'midrive2:{folder}/nodo_2')
+              ('Julio (midrive - Nodo 2)', f'midrive:{folder}/nodo_2')
           ]
 
           def notify_tg(text):
@@ -248,7 +280,7 @@ jobs:
 
           print("")
           print("="*70)
-          print("📊 AUDITORÍA FORENSE DEL CLÚSTER DUAL SIMÉTRICO (Julio + Vexor):")
+          print("📊 AUDITORÍA FORENSE DE LA PRUEBA EN GOOGLE DRIVE (midrive):")
           print("="*70)
 
           total_bytes = 0
@@ -277,21 +309,20 @@ jobs:
 
           if purge:
               print("")
-              print("🧹 Purgando carpetas de prueba para no ocupar almacenamiento libre...")
+              print("🧹 Purgando carpeta de prueba en midrive para no ocupar almacenamiento libre...")
               for label, remote in targets:
                   print(f"   -> Purgando {label}: {remote}...")
                   subprocess.run(['rclone', 'purge', remote], check=True)
+              # También purgar la raíz de la prueba si está vacía
               subprocess.run(['rclone', 'rmdirs', f'midrive:{folder}'])
-              subprocess.run(['rclone', 'rmdirs', f'midrive2:{folder}'])
               print("✅ Limpieza completada. Verificando estado final:")
               subprocess.run(['rclone', 'size', 'midrive:DESCARGAS_UNIVERSALES'])
-              subprocess.run(['rclone', 'size', 'midrive2:DESCARGAS_UNIVERSALES'])
 
           notify_tg(
-              f"🏆 <b>¡CLÚSTER DUAL SIMÉTRICO FINALIZADO Y CERTIFICADO!</b>\n\n"
-              f"📦 <b>Volumen Total Auditado:</b> {total_gb:.2f} GB ({total_count} objetos)\n"
-              f"⚡ <b>Arquitectura:</b> 2 Servidores Azure en Paralelo (Julio 15GB + Vexor 15GB)\n"
-              f"🛡️ <b>Purga Post-Auditoría:</b> {'Ejecutada (Tus Drives 100% limpios)' if purge else 'Archivos conservados'}\n"
-              f"🚀 <b>Resultado:</b> Doble canal incontestado a 90 MB/s cada uno"
+              f"🏆 <b>¡CLÚSTER MULTI-SERVIDOR 100% MIDRIVE (JULIO) FINALIZADO!</b>\n\n"
+              f"📦 <b>Volumen Total Auditado en Google Drive:</b> {total_gb:.2f} GB ({total_count} objetos)\n"
+              f"⚡ <b>Arquitectura:</b> 2 Servidores Azure en Paralelo hacia midrive (Julio)\n"
+              f"🛡️ <b>Purga Post-Auditoría:</b> {'Ejecutada (midrive 100% limpio)' if purge else 'Archivos conservados'}\n"
+              f"🚀 <b>Resultado:</b> Ambos nodos a máxima velocidad con Client ID dedicado"
           )
           EOF
