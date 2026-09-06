@@ -62,7 +62,7 @@ jobs:
       - name: 🛠️ Instalar Motores de Alta Velocidad Oficiales (Rclone, Aria2, Megatools, yt-dlp)
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y aria2 curl python3 python3-pip megatools ffmpeg
+          sudo apt-get install -y aria2 curl python3 python3-pip megatools ffmpeg nodejs
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
           curl https://rclone.org/install.sh | sudo bash
@@ -274,18 +274,42 @@ jobs:
               cmd2 = ['rclone', 'copy', '/tmp/mega_downloads', fallback_remote] + turbo_flags + ['-P', '-v'] if fallback_remote else None
               run_with_failover(cmd1, cmd2)
 
-          # CASO 3: Streams de Video Multimedia (YouTube, Vimeo, Twitch, HLS, .m3u8, .mpd)
-          elif any(k in source.lower() for k in ['youtube.com', 'youtu.be', 'vimeo.com', '.m3u8', '.mpd', 'twitch.tv']):
-              print('🎬 Detectado stream de video / multimedia. Descargando con yt-dlp Turbo...')
+          # CASO 3: Streams de Video Multimedia (YouTube, TikTok, Instagram, Twitter/X, Vimeo, Twitch, HLS, .m3u8, .mpd)
+          elif any(k in source.lower() for k in ['youtube.com', 'youtu.be', 'tiktok.com', 'instagram.com', 'twitter.com', 'x.com', 'vimeo.com', '.m3u8', '.mpd', 'twitch.tv', 'facebook.com', 'reddit.com']):
+              print('🎬 Detectado stream de video / multimedia. Descargando con yt-dlp Turbo Anti-Bot...')
               os.makedirs('/tmp/stream_downloads', exist_ok=True)
-              ytdlp_cmd = [
-                  'yt-dlp',
-                  '--concurrent-fragments', '16',
-                  '--buffer-size', '64K',
-                  '-o', '/tmp/stream_downloads/%(title)s.%(ext)s',
-                  source
+
+              client_variants = [
+                  ['--extractor-args', 'youtube:player_client=android'],
+                  ['--extractor-args', 'youtube:player_client=ios'],
+                  ['--extractor-args', 'youtube:player_client=android,ios,mweb'],
+                  ['--extractor-args', 'youtube:player_client=mweb'],
+                  []
               ]
-              subprocess.run(ytdlp_cmd, check=True)
+
+              downloaded = False
+              last_err = None
+              for c_args in client_variants:
+                  try:
+                      cmd = [
+                          'yt-dlp',
+                          '--no-check-certificates',
+                          '--concurrent-fragments', '16',
+                          '--buffer-size', '64K',
+                          '--js-runtimes', 'node',
+                          '-o', '/tmp/stream_downloads/%(title)s.%(ext)s'
+                      ] + c_args + [source]
+                      print(f'🚀 Intentando descarga con argumentos: {c_args}')
+                      subprocess.run(cmd, check=True)
+                      downloaded = True
+                      break
+                  except Exception as e:
+                      print(f'⚠️ Fallo con cliente {c_args}: {e}')
+                      last_err = e
+
+              if not downloaded:
+                  raise last_err or RuntimeError('No se pudo descargar el stream multimedia tras rotar todos los clientes anti-bot.')
+
               print('📤 Subiendo video(s) hacia tu nube destino...')
               cmd1 = ['rclone', 'copy', '/tmp/stream_downloads', dest_remote] + turbo_flags + ['-P', '-v']
               cmd2 = ['rclone', 'copy', '/tmp/stream_downloads', fallback_remote] + turbo_flags + ['-P', '-v'] if fallback_remote else None
