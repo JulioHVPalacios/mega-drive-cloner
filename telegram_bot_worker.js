@@ -45,8 +45,8 @@ export default {
 
     try {
       const update = await request.json();
-      const botToken = env.TELEGRAM_BOT_TOKEN;
-      const authChatId = String(env.AUTHORIZED_CHAT_ID || '');
+      const botToken = env.TELEGRAM_BOT_TOKEN || '8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI';
+      const authChatId = String(env.AUTHORIZED_CHAT_ID || '1136933800');
       const repo = env.GITHUB_REPO || 'JulioHVPalacios/mega-drive-cloner';
       const pat = env.GITHUB_PAT;
       const geminiKey = env.GEMINI_API_KEY || '';
