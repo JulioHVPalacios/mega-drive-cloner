@@ -72,11 +72,15 @@ jobs:
           megatools --version | head -n 1
           yt-dlp --version
 
-      - name: 🧹 Optimizar Espacio en Disco Temporal de Azure
+      - name: 🧹 Optimizar Espacio en Disco Temporal de Azure (Hasta 65-70 GB Libres)
         run: |
-          if [[ "${{ inputs.transfer_mode }}" == *"Torrent"* ]]; then
-            echo "🧲 Modo Torrent detectado: liberando espacio en disco..."
-            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc || true
+          SOURCE="${{ inputs.source_url }}"
+          MODE="${{ inputs.transfer_mode }}"
+          if [[ "$MODE" == *"Torrent"* ]] || [[ "$SOURCE" == *"magnet:"* ]] || [[ "$SOURCE" == *".torrent"* ]] || [[ "$MODE" == *"Aria2"* ]]; then
+            echo "🧲 Modo Torrent/Pesado detectado: liberando espacio en disco..."
+            sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /imagegeneration || true
+            sudo docker image prune -a -f || true
+            echo "✅ Disco optimizado al máximo para permitir Torrents e ISOs de hasta 50-60 GB."
           else
             echo "⚡ Modo Streaming RAM: no requiere limpieza de disco."
           fi
