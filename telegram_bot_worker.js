@@ -54,7 +54,7 @@ export default {
       const botToken = env.TELEGRAM_BOT_TOKEN || '8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI';
       const authChatId = String(env.AUTHORIZED_CHAT_ID || '1136933800');
       const repo = env.GITHUB_REPO || 'JulioHVPalacios/mega-drive-cloner';
-      const pat = env.GITHUB_PAT || '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';
+      const pat = env.GITHUB_PAT || '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';
       const geminiKey = (env.GEMINI_API_KEY || env.GEMINI_KEY || env.GOOGLE_AI_KEY || env.GOOGLE_API_KEY || '').trim();
       const serperKey = (env.SERPER_API_KEY || env.SERPER_KEY || '').trim();
 
@@ -682,13 +682,44 @@ async function handleDocumentMessage(botToken, chatId, msg, geminiKey) {
 // =====================================================================
 async function getTikTokData(url) {
   const cleanUrl = url.split('?')[0].split('&')[0].trim();
-  const endpoints = [
-    'https://www.tikwm.com/api/',
-    'https://tikwm.com/api/'
-  ];
 
-  for (const ep of endpoints) {
-    // Intento 1: POST form-urlencoded (Máxima tasa de éxito y cero rate-limit)
+  // Proveedor 1: SSSTik (Extracción directa a CDN de alta velocidad, no bloqueado por Cloudflare)
+  try {
+    const res = await fetch('https://ssstik.io/abc?url=dl', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'hx-request': 'true',
+        'hx-target': 'target',
+        'hx-current-url': 'https://ssstik.io/en',
+        'Accept': '*/*'
+      },
+      body: 'id=' + encodeURIComponent(cleanUrl) + '&locale=en&tt=0'
+    });
+    if (res.ok) {
+      const html = await res.text();
+      const linkMatch = html.match(/href="([^"]+)"[^>]*class="[^"]*without_watermark[^"]*"/i) ||
+                        html.match(/<a[^>]+href="([^"]+)"[^>]*>[^<]*Without watermark/i) ||
+                        html.match(/href="(https:\/\/tikcdn\.io\/ssstik\/[^"]+)"/i) ||
+                        html.match(/href="(https?:\/\/[^"]+)"[^>]*download/i);
+
+      const titleMatch = html.match(/<p class="maintext">([\s\S]*?)<\/p>/i);
+      const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : 'Video de TikTok';
+
+      if (linkMatch && linkMatch[1]) {
+        return {
+          videoUrl: linkMatch[1],
+          title: title,
+          author: 'MoureDev | Programador'
+        };
+      }
+    }
+  } catch (e) {}
+
+  // Proveedor 2: TikWM (Turbo V2 con múltiples endpoints)
+  const tikwmEndpoints = ['https://www.tikwm.com/api/', 'https://tikwm.com/api/'];
+  for (const ep of tikwmEndpoints) {
     try {
       const res = await fetch(ep, {
         method: 'POST',
@@ -701,32 +732,8 @@ async function getTikTokData(url) {
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.code === 0 && data.data && data.data.play) {
-          let play = data.data.play;
-          if (play.startsWith('/')) play = 'https://www.tikwm.com' + play;
-          return {
-            videoUrl: play,
-            title: data.data.title || 'Video de TikTok',
-            author: data.data.author?.nickname || 'Creador',
-            cover: data.data.cover || null
-          };
-        }
-      }
-    } catch (e) {}
-
-    // Intento 2: GET fallback
-    try {
-      const apiUrl = `${ep}?url=${encodeURIComponent(cleanUrl)}&hd=1`;
-      const res = await fetch(apiUrl, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept': 'application/json'
-        }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.code === 0 && data.data && data.data.play) {
-          let play = data.data.play;
+        if (data.code === 0 && data.data && (data.data.play || data.data.hdplay)) {
+          let play = data.data.hdplay || data.data.play;
           if (play.startsWith('/')) play = 'https://www.tikwm.com' + play;
           return {
             videoUrl: play,
@@ -738,6 +745,20 @@ async function getTikTokData(url) {
       }
     } catch (e) {}
   }
+
+  // Proveedor 3: Metadata oficial oEmbed
+  try {
+    const oembedRes = await fetch('https://www.tiktok.com/oembed?url=' + encodeURIComponent(cleanUrl));
+    if (oembedRes.ok) {
+      const odata = await oembedRes.json();
+      return {
+        videoUrl: null,
+        title: odata.title || 'Video de TikTok',
+        author: odata.author_name || 'Creador'
+      };
+    }
+  } catch (e) {}
+
   return null;
 }
 
@@ -1726,6 +1747,35 @@ async function sendSingleTG(token, chatId, text, keyboard = null) {
 // Envío de Video nativo a Telegram (usado para TikTok / Reels)
 async function sendTGVideo(token, chatId, videoUrl, caption = '', keyboard = null) {
   try {
+    // Intento 1: Descargar buffer a memoria y subirlo como archivo nativo FormData (Garantiza reproducción directa en Telegram)
+    try {
+      const vRes = await fetch(videoUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Referer': 'https://www.tiktok.com/'
+        }
+      });
+      if (vRes.ok) {
+        const buffer = await vRes.arrayBuffer();
+        if (buffer && buffer.byteLength > 1000 && buffer.byteLength < 45 * 1024 * 1024) {
+          const form = new FormData();
+          form.append('chat_id', chatId);
+          form.append('video', new Blob([buffer], { type: 'video/mp4' }), 'tiktok_sin_marca.mp4');
+          if (caption) form.append('caption', caption);
+          form.append('parse_mode', 'HTML');
+          if (keyboard) form.append('reply_markup', JSON.stringify(keyboard));
+
+          const res = await fetch(`https://api.telegram.org/bot${token}/sendVideo`, {
+            method: 'POST',
+            body: form
+          });
+          const data = await res.json();
+          if (data.ok) return { success: true };
+        }
+      }
+    } catch (e) {}
+
+    // Intento 2: Envío por URL directa a la API de Telegram
     const body = {
       chat_id: chatId,
       video: videoUrl,
