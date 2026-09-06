@@ -141,13 +141,15 @@ jobs:
           def notify_tg(text):
               if not tg_token or not tg_chat_id:
                   return
-              try:
-                  url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
-                  data = json.dumps({"chat_id": tg_chat_id, "text": text, "parse_mode": "HTML"}).encode('utf-8')
-                  req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-                  urllib.request.urlopen(req, timeout=10)
-              except Exception as e:
-                  print(f"⚠️ Telegram err: {e}")
+              for _ in range(3):
+                  try:
+                      url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
+                      data = json.dumps({"chat_id": tg_chat_id, "text": text, "parse_mode": "HTML"}).encode('utf-8')
+                      req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+                      urllib.request.urlopen(req, timeout=10)
+                      break
+                  except Exception as e:
+                      time.sleep(1)
 
           notify_tg(f"🚀 <b>[NODO {nodo_id}/4 - MEGAPACK HETEROGÉNEO] INICIADO</b>\nCarga Asignada: 7.50 GB Heterogéneo\nDestino: <code>{dest_remote}</code> ({account_label})")
 
@@ -183,7 +185,7 @@ jobs:
               buf_64m = b'\x00' * chunk_size
 
               if file_type in ('docx', 'xlsx', 'pbix', 'zip'):
-                  with zipfile.ZipFile(full_path, 'w', zipfile.ZIP_STORED) as zf:
+                  with zipfile.ZipFile(full_path, 'w', zipfile.ZIP_STORED, allowZip64=True) as zf:
                       if file_type == 'docx':
                           zf.writestr('[Content_Types].xml', b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"></Types>')
                           zf.writestr('word/document.xml', b'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Megapack Word Document</w:t></w:r></w:p></w:body></w:document>')
@@ -203,7 +205,7 @@ jobs:
                           inner_name = 'payload/libraries_archive.bin'
 
                       inner_target = max(0, target_bytes - 2048)
-                      with zf.open(inner_name, 'w') as f:
+                      with zf.open(inner_name, 'w', force_zip64=True) as f:
                           rem = inner_target
                           while rem > 0:
                               take = min(rem, chunk_size)
@@ -375,13 +377,15 @@ jobs:
           def notify_tg(text):
               if not tg_token or not tg_chat_id:
                   return
-              try:
-                  url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
-                  data = json.dumps({"chat_id": tg_chat_id, "text": text, "parse_mode": "HTML"}).encode('utf-8')
-                  req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
-                  urllib.request.urlopen(req, timeout=10)
-              except Exception as e:
-                  print(f"⚠️ Telegram err: {e}")
+              for _ in range(3):
+                  try:
+                      url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
+                      data = json.dumps({"chat_id": tg_chat_id, "text": text, "parse_mode": "HTML"}).encode('utf-8')
+                      req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+                      urllib.request.urlopen(req, timeout=10)
+                      break
+                  except Exception as e:
+                      time.sleep(1)
 
           accounts_to_check = []
           if dest_acc == 'both':
@@ -637,7 +641,7 @@ jobs:
               notify_tg(
                   f"⚡ <b>[NODO {nodo_id} - COMPLETADO]</b>\n"
                   f"Volumen: {total_gb:.2f} GB\n"
-                  f"Tiempo de Subida: {up_time:.1f}s ({up_speed_mb:.1f} MB/s | {up_speed_gbps:.2f} Gbps)\n"
+                  f"Tiempo de Subida: {up_time:.1f}s ({up_speed_mb:.2f} MB/s | {up_speed_gbps:.2f} Gbps)\n"
                   f"Tiempo Total Nodo: {total_elapsed:.1f}s"
               )
           except Exception as e:
