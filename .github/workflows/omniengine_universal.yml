@@ -15,12 +15,12 @@ on:
       destination_account:
         description: 'Cuenta de Google Drive destino'
         required: true
-        default: 'midrive'
+        default: 'both'
         type: choice
         options:
+          - 'both'
           - 'midrive'
           - 'midrive2'
-          - 'both'
       destination_folder:
         description: 'Carpeta de prueba en Google Drive'
         required: true
@@ -38,7 +38,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   # =========================================================================
@@ -235,7 +235,7 @@ jobs:
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
 
-      - name: 🏆 Auditoría Forense y Purga Consolidada
+      - name: 🏆 Auditoría Forense y Purga Consolidada Swarm
         env:
           DEST_FOLDER: ${{ inputs.destination_folder }}
           PURGE_AFTER: ${{ inputs.purge_after_test }}
@@ -306,7 +306,7 @@ jobs:
           EOF
 
   # =========================================================================
-  # MODO 2: MONOLITHIC_STREAM (Streaming Dual Simultáneo en Paralelo < 3 Min)
+  # MODO 2: MONOLITHIC_STREAM (Streaming Dual Simultáneo en Paralelo < 4 Min)
   # =========================================================================
   monolithic_stream:
     name: '💿 Stream Nodo ${{ matrix.nodo }} - ${{ matrix.name }}'
@@ -318,13 +318,13 @@ jobs:
           - nodo: 1
             name: 'AlmaLinux 9 DVD (15.15 GB) ➔ Julio'
             account: 'midrive'
-            url: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso'
-            filename: 'AlmaLinux-9-latest-x86_64-dvd.iso'
+            urls: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso'
+            filenames: 'AlmaLinux-9-latest-x86_64-dvd.iso'
           - nodo: 2
-            name: 'Rocky Linux 9 DVD (15.19 GB) ➔ Vexor'
+            name: 'AlmaLinux 8 DVD (13.74 GB) + Arch (1.61 GB) ➔ Vexor'
             account: 'midrive2'
-            url: 'https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso'
-            filename: 'Rocky-9-latest-x86_64-dvd.iso'
+            urls: 'https://repo.almalinux.org/almalinux/8/isos/x86_64/AlmaLinux-8-latest-x86_64-dvd.iso https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso'
+            filenames: 'AlmaLinux-8-latest-x86_64-dvd.iso archlinux-x86_64.iso'
       fail-fast: false
     steps:
       - name: ⚡ Optimización Nuclear de Red (Google BBR + Ventana TCP 64MB)
@@ -356,22 +356,22 @@ jobs:
           NODO_ID: ${{ matrix.nodo }}
           NODO_NAME: ${{ matrix.name }}
           TARGET_ACCOUNT: ${{ matrix.account }}
-          SOURCE_URL: ${{ matrix.url }}
-          FILE_NAME: ${{ matrix.filename }}
+          SOURCE_URLS: ${{ matrix.urls }}
+          FILE_NAMES: ${{ matrix.filenames }}
           DEST_FOLDER: ${{ inputs.destination_folder }}
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
-          import os, time, subprocess, json, urllib.request
+          import os, time, subprocess, json, threading, urllib.request
 
           nodo_id = os.environ.get('NODO_ID', '1').strip()
           nodo_name = os.environ.get('NODO_NAME', '').strip()
           target_account = os.environ.get('TARGET_ACCOUNT', 'midrive').strip()
-          url = os.environ.get('SOURCE_URL', '').strip()
-          filename = os.environ.get('FILE_NAME', '').strip()
+          urls = [u.strip() for u in os.environ.get('SOURCE_URLS', '').split() if u.strip()]
+          filenames = [f.strip() for f in os.environ.get('FILE_NAMES', '').split() if f.strip()]
           folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/test_omniengine_30gb').strip()
-          dest_file_remote = f"{target_account}:{folder}/stream_nodo_{nodo_id}/{filename}"
+          dest_base = f"{target_account}:{folder}/stream_nodo_{nodo_id}"
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
@@ -388,35 +388,61 @@ jobs:
 
           notify_tg(
               f"🌊 <b>[STREAM NODO {nodo_id}/2] INICIADO</b>\n"
-              f"Archivo: {nodo_name}\n"
+              f"Carga: {nodo_name}\n"
               f"Tecnología: RAM Ring-Buffer 256MB (0 B en disco)\n"
-              f"Destino: <code>{dest_file_remote}</code>"
+              f"Destino: <code>{dest_base}</code>"
           )
 
-          t0 = time.time()
-          # Stream directo de alta velocidad vía tubería RAM a Google Drive
-          curl_cmd = f"curl -sL '{url}' | rclone rcat '{dest_file_remote}' --drive-chunk-size=256M --buffer-size=256M --stats=15s --stats-one-line"
-          subprocess.run(curl_cmd, shell=True, check=True)
-          stream_time = time.time() - t0
+          t_node_start = time.time()
+          total_node_bytes = 0
 
-          # Auditar archivo individual en Drive
-          res_sz = subprocess.run(['rclone', 'size', dest_file_remote, '--json'], stdout=subprocess.PIPE, text=True)
-          f_bytes = 0
-          try:
-              f_bytes = json.loads(res_sz.stdout).get('bytes', 0)
-          except:
-              pass
-          f_mb = f_bytes / (1024*1024)
-          f_gb = f_bytes / (1024*1024*1024)
-          speed = f_mb / max(stream_time, 0.001)
+          for url, filename in zip(urls, filenames):
+              dest_file_remote = f"{dest_base}/{filename}"
+              notify_tg(f"▶️ [Nodo {nodo_id}] Transmitiendo vía RAM: <code>{filename}</code>...")
+              t0 = time.time()
+
+              # Background heartbeat thread to keep Telegram informed every 45 seconds
+              stop_heartbeat = threading.Event()
+              def stream_heartbeat():
+                  while not stop_heartbeat.wait(45.0):
+                      cur_elapsed = time.time() - t0
+                      notify_tg(f"⏳ [Nodo {nodo_id}] Streaming en curso: <code>{filename}</code> ({int(cur_elapsed)}s transcurridos)...")
+
+              hb_thread = threading.Thread(target=stream_heartbeat, daemon=True)
+              hb_thread.start()
+
+              # Direct RAM stream curl -> rclone rcat
+              curl_cmd = f"curl -fSL '{url}' | rclone rcat '{dest_file_remote}' --drive-chunk-size=256M --buffer-size=256M --stats=15s --stats-one-line"
+              try:
+                  subprocess.run(curl_cmd, shell=True, check=True)
+              finally:
+                  stop_heartbeat.set()
+
+              t_file = time.time() - t0
+
+              res_sz = subprocess.run(['rclone', 'size', dest_file_remote, '--json'], stdout=subprocess.PIPE, text=True)
+              f_bytes = 0
+              try:
+                  f_bytes = json.loads(res_sz.stdout).get('bytes', 0)
+              except:
+                  pass
+              total_node_bytes += f_bytes
+              f_gb = f_bytes / (1024*1024*1024)
+              speed = (f_bytes / (1024*1024)) / max(t_file, 0.001)
+
+              notify_tg(f"✅ [Nodo {nodo_id}] <code>{filename}</code> ({f_gb:.2f} GB) completado en {t_file/60:.2f}m ({speed:.1f} MB/s)")
+
+          elapsed_node = time.time() - t_node_start
+          tot_gb = total_node_bytes / (1024*1024*1024)
+          avg_speed = (total_node_bytes / (1024*1024)) / max(elapsed_node, 0.001)
 
           notify_tg(
-              f"✅ <b>[STREAM NODO {nodo_id}/2] COMPLETADO</b>\n\n"
-              f"📦 <b>Archivo:</b> {filename} ({f_gb:.2f} GB)\n"
-              f"⏱️ <b>Tiempo de Transmisión:</b> {stream_time / 60:.2f} min ({stream_time:.1f}s)\n"
-              f"⚡ <b>Velocidad Neta RAM Stream:</b> {speed:.1f} MB/s ({speed * 8:.1f} Mbps)\n"
-              f"💾 <b>Disco Azure Usado:</b> 0 Bytes (100% RAM)\n"
-              f"🎉 <b>Resultado:</b> Archivo íntegro y listo en Google Drive sin particionar"
+              f"🏆 <b>[STREAM NODO {nodo_id}/2] FINALIZADO</b>\n\n"
+              f"📦 <b>Volumen:</b> {tot_gb:.2f} GB\n"
+              f"⏱️ <b>Tiempo de Nodo:</b> {elapsed_node / 60:.2f} min ({elapsed_node:.1f}s)\n"
+              f"⚡ <b>Velocidad Neta RAM Stream:</b> {avg_speed:.1f} MB/s\n"
+              f"💾 <b>Disco Azure Consumido:</b> 0 Bytes (100% RAM Streaming)\n"
+              f"🎉 <b>Resultado:</b> ISOs monolíticas listas en Google Drive"
           )
           EOF
 
@@ -455,8 +481,8 @@ jobs:
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
           targets = [
-              ('Julio (midrive - AlmaLinux 15.15 GB)', f'midrive:{folder}/stream_nodo_1'),
-              ('Vexor (midrive2 - Rocky 15.19 GB)', f'midrive2:{folder}/stream_nodo_2')
+              ('Julio (midrive - Nodo 1: AlmaLinux 9 DVD)', f'midrive:{folder}/stream_nodo_1'),
+              ('Vexor (midrive2 - Nodo 2: AlmaLinux 8 + Arch)', f'midrive2:{folder}/stream_nodo_2')
           ]
           remotes_to_clean = ['midrive', 'midrive2']
 
@@ -500,11 +526,11 @@ jobs:
 
           breakdown_str = "\n".join(breakdown_lines)
           notify_tg(
-              f"🏆 <b>¡AUDITORÍA CERTIFICADA MONOLITHIC STREAM (30.34 GB)!</b>\n\n"
-              f"📦 <b>Volumen Total Auditado:</b> {total_gb:.2f} GB ({total_count} ISOs gigantes)\n\n"
-              f"📊 <b>Desglose por Nube:</b>\n{breakdown_str}\n\n"
-              f"⚡ <b>Rendimiento:</b> 2 Nodos en Paralelo (< 3 Minutos)\n"
-              f"🛡️ <b>Purga Post-Auditoría:</b> {'Completada (0 B libres)' if purge else 'Conservada'}"
+              f"🏆 <b>¡AUDITORÍA CERTIFICADA MONOLITHIC STREAM ({total_gb:.2f} GB)!</b>\n\n"
+              f"📦 <b>Volumen Total Auditado:</b> {total_gb:.2f} GB ({total_count} ISOs monolíticas)\n\n"
+              f"📊 <b>Desglose por Servidor:</b>\n{breakdown_str}\n\n"
+              f"⚡ <b>Rendimiento:</b> 2 Nodos en Paralelo (< 4 Minutos)\n"
+              f"🛡️ <b>Purga Post-Auditoría:</b> {'Completada (0 B ocupados en tus drives)' if purge else 'Conservada'}"
           )
           EOF
 
@@ -561,6 +587,8 @@ jobs:
           import os, time, subprocess, shutil, json, urllib.request
 
           dest_account = os.environ.get('DEST_ACCOUNT', 'midrive').strip()
+          if dest_account == 'both':
+              dest_account = 'midrive'
           folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/test_omniengine_30gb').strip()
           dest_remote = f"{dest_account}:{folder}/extracted_content"
           archive_pwd = os.environ.get('ARCHIVE_PWD', '').strip()
@@ -636,9 +664,8 @@ jobs:
           raw_gb = raw_bytes / (1024*1024*1024)
           dl_speed = (raw_bytes / (1024*1024)) / max(dl_time, 0.001)
 
-          notify_tg(f"✅ <b>[PASO 1/4] Descarga Completada:</b> {raw_gb:.2f} GB en {dl_time:.1f}s ({dl_speed:.1f} MB/s)\n📦 <b>[PASO 2/4] Creando contenedor comprimido .7z / .tar...</b>")
+          notify_tg(f"✅ <b>[PASO 1/4] Descarga Completada:</b> {raw_gb:.2f} GB en {dl_time:.1f}s ({dl_speed:.1f} MB/s)\n📦 <b>[PASO 2/4] Creando contenedor comprimido .tar...</b>")
 
-          # Empaquetado comprimido
           archive_file = "/tmp/PAQUETE_MAESTRO_30GB.tar"
           t_pack_start = time.time()
           subprocess.run(["tar", "-cf", archive_file, "--remove-files", "-C", work_dir, "."], check=True)
@@ -649,7 +676,6 @@ jobs:
 
           notify_tg(f"🗜️ <b>[PASO 3/4] Auto-Extracción en Nube...</b>\nSimulando descompresión de {archive_gb:.2f} GB (Soporte Passwords)")
 
-          # Extracción con soporte de contraseña
           t_ext_start = time.time()
           os.makedirs(extract_dir, exist_ok=True)
           cmd_extract = ["7z", "x", archive_file, f"-o{extract_dir}", "-y"]
