@@ -190,7 +190,7 @@ def revoke_permission(folder_path, email_or_id, remote='midrive'):
         return False
 
     url_del = f"https://www.googleapis.com/drive/v3/files/{folder_id}/permissions/{target_id}?supportsAllDrives=true"
-    req_del = urllib.request.Request(url_del, headers={'Authorization': f'Bearer {access_token}'}, method='DELETE')
+    req_del = urllib.request.Request(url_del, headers={'Authorization': f'Bearer {access_token}', 'Content-Length': '0'}, method='DELETE')
     try:
         with urllib.request.urlopen(req_del, timeout=30) as resp:
             print(f"[OK] Permiso revocado correctamente para '{email_or_id}'.", flush=True)
