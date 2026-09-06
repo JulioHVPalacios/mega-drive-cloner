@@ -1,4 +1,4 @@
-name: ⚡ Clúster Cuádruple 30 GB (4 Servidores Azure: 2 Julio + 2 Vexor)
+name: '⚡ Clúster Cuádruple 30 GB (4 Servidores Azure: 2 Julio + 2 Vexor)'
 
 on:
   workflow_dispatch:
