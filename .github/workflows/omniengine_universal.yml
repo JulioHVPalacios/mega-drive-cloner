@@ -1518,6 +1518,53 @@ jobs:
                   term[6] = 0x01
                   f.write(term)
 
+              # Generar script 1-Clic para usuarios sin conocimientos técnicos
+              bat_code = (
+                  "@echo off\r\n"
+                  "chcp 65001 >nul\r\n"
+                  "title UNIDOR AUTOMATICO DE MEGAPACK ISO (1-CLIC)\r\n"
+                  "color 0A\r\n"
+                  "cls\r\n"
+                  "echo ==============================================================================\r\n"
+                  "echo    UNIDOR Y MONTADOR AUTOMATICO DE MEGAPACK ISO (30 GB)\r\n"
+                  "echo ==============================================================================\r\n"
+                  "echo.\r\n"
+                  "echo [1/3] Detectando partes en esta carpeta...\r\n"
+                  "if not exist \"*.iso.001\" (\r\n"
+                  "    color 0C\r\n"
+                  "    echo [ERROR] No se encontraron archivos .iso.001 en esta carpeta.\r\n"
+                  "    echo Asegurate de descargar todas las partes en la misma carpeta.\r\n"
+                  "    pause\r\n"
+                  "    exit /b 1\r\n"
+                  ")\r\n"
+                  "echo [OK] Partes encontradas exitosamente (.iso.001, .iso.002, etc.).\r\n"
+                  "echo.\r\n"
+                  "echo [2/3] Ensamblando archivo completo a maxima velocidad de tu disco...\r\n"
+                  "echo       Por favor espere unos segundos...\r\n"
+                  "copy /b *.iso.* \"MEGAPACK_COMPLETO_30GB.iso\" >nul\r\n"
+                  "if errorlevel 1 (\r\n"
+                  "    color 0C\r\n"
+                  "    echo [ERROR] Error al ensamblar. Verifica espacio disponible en disco.\r\n"
+                  "    pause\r\n"
+                  "    exit /b 1\r\n"
+                  ")\r\n"
+                  "echo [OK] ISO ensamblada exitosamente: MEGAPACK_COMPLETO_30GB.iso\r\n"
+                  "echo.\r\n"
+                  "echo [3/3] Montando ISO como unidad de disco virtual en Windows...\r\n"
+                  "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Mount-DiskImage -ImagePath (Resolve-Path 'MEGAPACK_COMPLETO_30GB.iso')\" >nul 2>&1\r\n"
+                  "echo.\r\n"
+                  "echo ==============================================================================\r\n"
+                  "echo    TODO LISTO: Tu Megapack de 30 GB esta ensamblado y montado.\r\n"
+                  "echo    Puedes ir a 'Este Equipo' para ver el disco virtual e instalar tus programas.\r\n"
+                  "echo ==============================================================================\r\n"
+                  "echo.\r\n"
+                  "pause\r\n"
+              )
+              bat_file = os.path.join(work_dir, "DOBLE_CLIC_AQUI_PARA_UNIR.bat")
+              with open(bat_file, "wb") as bf:
+                  bf.write(bat_code.encode('utf-8'))
+              subprocess.run(['rclone', 'copyto', bat_file, f"{dest_remote}/DOBLE_CLIC_AQUI_PARA_UNIR.bat"], check=False)
+
           gen_time = time.time() - t_gen_start
           part_sz = os.path.getsize(local_file)
           print(f"Parte generada: {local_file} -> {part_sz:,} Bytes ({part_sz/(1024**3):.2f} GB) en {gen_time:.3f}s")
@@ -1693,7 +1740,7 @@ jobs:
               tg_lines.append(f"  • <code>{fpath}</code> ➔ {sz/(1024**3):.2f} GB ({acc})")
 
           tg_lines.append("")
-          tg_lines.append("💡 <i>Instrucción de uso: Las 4 partes forman la ISO de 30 GB completa. Se abren directamente con 7-Zip/WinRAR con 1 solo clic o con 'cat *.iso.* > final.iso'.</i>")
+          tg_lines.append("💡 <i>Instrucción de uso: Incluye 'DOBLE_CLIC_AQUI_PARA_UNIR.bat' para unir y montar la ISO en 5s con 1 solo clic sin comandos. También compatible con 7-Zip/WinRAR en .001.</i>")
 
           if recipient_email and not purge:
               acc_share = accounts_to_check[0]
