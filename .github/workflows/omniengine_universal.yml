@@ -1508,7 +1508,7 @@ jobs:
                   f.seek(0)
                   # RAR 5.0 Signature + Main archive header block
                   f.write(b'Rar!\x1a\x07\x01\x00')
-                  header_body = b'\x01\x01\x00'
+                  header_body = bytes([0x01, 0x01, 0x00])
                   f.write(struct.pack('<I', 0x12345678))
                   f.write(bytes([len(header_body)]))
                   f.write(header_body)
@@ -1563,7 +1563,7 @@ jobs:
           elif format_type == 'zip':
               with open(local_file, 'r+b') as f:
                   f.seek(0)
-                  # ZIP header PK
+                  # ZIP header PK
                   f.write(b'PK\x03\x04\x14\x00\x00\x00\x00\x00')
 
               if part_idx == 1:
