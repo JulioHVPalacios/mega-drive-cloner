@@ -1,13 +1,15 @@
 """
-OmniCloud Core - Telegram Bot Local Poller Inteligente (Zero Dependencias)
-Totalmente optimizado para manejo táctil en móviles:
+OmniCloud Core - Telegram Bot Local Poller Ultra-Blindado (Zero Dependencias)
+Totalmente optimizado para manejo táctil en móviles e Inteligencia Artificial Avanzada:
 - Teclado persistente con botones grandes (Cero necesidad de escribir comandos)
-- Motor de Procesamiento de Lenguaje Natural (NLP Cognitivo)
-- Integración con Google Gemini 2.0 AI (Respuestas y asesoría técnica en vivo)
+- Motor de IA de Descubrimiento de Proyectos en Tiempo Real (GitHub Live Search)
+- Motor Enciclopédico y Conceptual (Wikipedia API en vivo)
+- Integración con Google Gemini 2.0 Flash (Razonamiento profundo y Web Search)
+- Detección inteligente de enlaces (Google Drive, Torrents, ISOs, RARs, Directos)
 - Compartición instantánea de carpetas Google Drive a cualquier Gmail
 - Despacho de descargas ultrarrápidas en Azure Cloud (1.5 - 2.0 Gbps, PC apagada)
 - Modos Swarm Multi-Nodo (30 GB en < 4 minutos con auto-unidor .bat)
-- Traductor de errores a lenguaje cotidiano comprensible
+- Bucle de conexión blindado con auto-reconexión y tolerancia a fallos
 """
 import os
 import sys
@@ -92,21 +94,82 @@ def escape_html(text):
             .replace(">", "&gt;"))
 
 # =====================================================================
+# MOTOR DE DESCUBRIMIENTO DE PROYECTOS Y CONOCIMIENTO EN VIVO
+# =====================================================================
+def search_github_projects(query, limit=5):
+    """Busca en tiempo real los proyectos y repositorios mejor valorados en GitHub"""
+    clean_q = re.sub(r'\b(busca|buscar|encuentra|mejores|los|de|para|proyectos|repositorios|github|top|herramientas|librerias|frameworks)\b', '', query, flags=re.IGNORECASE).strip()
+    if not clean_q:
+        clean_q = query
+
+    encoded = urllib.parse.quote(clean_q)
+    url = f"https://api.github.com/search/repositories?q={encoded}&sort=stars&order=desc&per_page={limit}"
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "OmniCloud-AI-Bot",
+        "Accept": "application/vnd.github+json"
+    })
+    try:
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            items = data.get('items', [])
+            if not items:
+                return "ℹ️ No se encontraron repositorios en GitHub para esa búsqueda específica."
+
+            msg = f"🏆 <b>LOS MEJORES PROYECTOS EN GITHUB ({clean_q.upper()}):</b>\n\n"
+            for i, it in enumerate(items, 1):
+                name = it.get('full_name')
+                stars = it.get('stargazers_count', 0)
+                forks = it.get('forks_count', 0)
+                desc = it.get('description') or 'Sin descripción disponible'
+                url_repo = it.get('html_url')
+                lang = it.get('language') or 'General'
+
+                msg += f"<b>{i}. <a href='{url_repo}'>{name}</a></b>\n"
+                msg += f"⭐ <b>{stars:,} estrellas</b> | 🍴 {forks:,} forks | 💻 <code>{lang}</code>\n"
+                msg += f"📝 <i>{escape_html(desc[:160])}...</i>\n\n"
+
+            msg += "💡 <i>Toca cualquier enlace para abrir el repositorio directamente en GitHub.</i>"
+            return msg
+    except Exception as e:
+        return f"❌ Error al consultar GitHub Search API: {e}"
+
+def search_wikipedia_summary(query):
+    """Obtiene resúmenes enciclopédicos precisos en tiempo real desde Wikipedia"""
+    clean_q = re.sub(r'\b(que es|quien es|definicion|explica|explicame|concepto|historia de)\b', '', query, flags=re.IGNORECASE).strip()
+    if not clean_q:
+        clean_q = query
+    encoded = urllib.parse.quote(clean_q.replace(" ", "_"))
+    url = f"https://es.wikipedia.org/api/rest_v1/page/summary/{encoded}"
+    req = urllib.request.Request(url, headers={"User-Agent": "OmniCloudBot/2.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+            title = data.get('title')
+            extract = data.get('extract')
+            page_url = data.get('content_urls', {}).get('desktop', {}).get('page', '')
+            if extract:
+                return f"📖 <b>{escape_html(title)}</b>\n\n{escape_html(extract)}\n\n🔗 <a href='{page_url}'>Leer artículo completo en Wikipedia</a>"
+    except Exception:
+        pass
+    return None
+
+# =====================================================================
 # INTELIGENCIA ARTIFICIAL: GOOGLE GEMINI 2.0 FLASH + MOTOR COGNITIVO
 # =====================================================================
 GEMINI_SYSTEM_PROMPT = """Eres OmniCloud AI, el asistente de inteligencia artificial personal de Julio en su bot de Telegram (@VexorOmniBot).
-Tu labor es orientarlo a él y a sus clientes con máxima claridad, cordialidad y profesionalismo.
-Conoces al 100% la infraestructura de OmniCloud:
-1. Nube Microsoft Azure: Descargas extremas a 1.5 - 2.0 Gbps que funcionan 24/7 con la PC de Julio apagada.
-2. Almacenamiento: Google Drive 10 TB con rotación automática entre cuenta principal Julio (5TB) y auxiliar Vexor (5TB) para saltarse cualquier límite diario de Google.
-3. Modos Swarm Multi-Nodo: Para archivos gigantes de 30GB+ (ISOs, RARs, ZIPs) que bajan en menos de 4 minutos y traen un script automático 'DOBLE_CLIC_AQUI_PARA_UNIR.bat' para que personas sin conocimientos técnicos monten o extraigan todo en 5 segundos con 1 solo clic.
-4. Compartición sin Rclone: Permite dar acceso a cualquier carpeta de Google Drive a cualquier amigo o cliente con solo su correo Gmail, sin contraseñas ni instalaciones en su PC.
-5. Formateo Seguro de PC: El formateo del disco C: nunca borra el disco D: ni detiene los servidores de Azure en la nube. El archivo 'restaurar_tras_formateo.bat' restaura todo en 60 segundos con 1 solo clic.
+Eres un experto de élite en arquitectura de software, infraestructura cloud, lenguajes de programación, proyectos open-source, descargas masivas y Google Drive.
 
-FORMATO OBLIGATORIO:
-- Responde SIEMPRE en español claro, amigable y directo.
-- Usa formato HTML compatible con Telegram (<b>negrita</b>, <code>código</code>, <i>cursiva</i>). NO uses markdown con **.
-- Mantén las respuestas breves y fáciles de leer en una pantalla de celular (máximo 2 a 3 párrafos).
+DIRECTIVAS PRINCIPALES:
+1. Responde de forma sumamente inteligente, estructurada y profunda. Si te piden proyectos, tecnologías o soluciones, aporta criterio técnico, pros y contras y enlaces útiles.
+2. Si la consulta involucra la infraestructura de Julio:
+   - Nube Microsoft Azure: Descargas extremas a 1.5 - 2.0 Gbps que funcionan 24/7 con la PC de Julio apagada.
+   - Google Drive: 10 TB con rotación automática entre Julio (5TB) y Vexor (5TB) para evadir el límite diario de 750 GB.
+   - Modos Swarm Multi-Nodo: Para archivos gigantes de 30GB+ (ISOs, RARs, ZIPs) que bajan en < 4 min con auto-unidor 'DOBLE_CLIC_AQUI_PARA_UNIR.bat'.
+   - Compartición instantánea: Otorga acceso a cualquier Gmail en 1.5s sin Rclone ni contraseñas.
+   - Protección contra formateo: El disco D: queda intacto, y 'restaurar_tras_formateo.bat' restaura todo en 60s.
+3. Responde SIEMPRE en español claro, profesional y amigable.
+4. Usa formato HTML compatible con Telegram (<b>negrita</b>, <code>código</code>, <i>cursiva</i>, <a href="...">enlace</a>). NO uses Markdown con asteriscos dobles (**).
+5. Mantén un tamaño conciso y perfectamente legible en una pantalla de smartphone.
 """
 
 def get_gemini_key():
@@ -146,8 +209,8 @@ def call_gemini_api(prompt):
             {"role": "user", "parts": [{"text": prompt}]}
         ],
         "generationConfig": {
-            "temperature": 0.4,
-            "maxOutputTokens": 900
+            "temperature": 0.5,
+            "maxOutputTokens": 1200
         }
     }
     data = json.dumps(payload).encode("utf-8")
@@ -156,7 +219,7 @@ def call_gemini_api(prompt):
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
         req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=20) as resp:
+            with urllib.request.urlopen(req, timeout=22) as resp:
                 res = json.loads(resp.read().decode("utf-8"))
                 candidates = res.get("candidates", [])
                 if candidates:
@@ -223,13 +286,13 @@ def get_cognitive_answer(topic):
     elif topic == "AI_SETUP":
         return (
             "🧠 <b>CÓMO VINCULAR TU CLAVE GRATUITA DE GOOGLE GEMINI AI</b>\n\n"
-            "Tu bot ya tiene respuestas inteligentes integradas, pero si deseas que Google Gemini 2.0 Flash charle contigo libremente:\n\n"
+            "Tu bot ya tiene búsqueda en vivo de proyectos en GitHub y Wikipedia integrados. Si además deseas que Google Gemini 2.0 Flash razone y charle contigo libremente:\n\n"
             "1. Consigue una clave gratuita en 10 segundos en:\n"
             "👉 <a href='https://aistudio.google.com/'>Google AI Studio (aistudio.google.com)</a>\n"
             "2. Copia tu clave (empieza por <code>AIzaSy...</code>)\n"
             "3. Envíala a este chat escribiendo:\n"
             "<code>/ia_key TU_CLAVE_AQUI</code>\n\n"
-            "¡Y listo! El bot activará el cerebro de Gemini al 100%."
+            "¡Y listo! El bot activará el cerebro completo de Gemini 2.0."
         )
     return "ℹ️ Escribe lo que necesites saber y te orientaré de inmediato."
 
@@ -324,13 +387,13 @@ def trigger_sync():
 # =====================================================================
 def show_welcome(chat_id):
     txt = (
-        "👑 <b>Centro de Control OmniCloud Core</b>\n\n"
-        "Descargas ultrarrápidas (1.5 - 2.0 Gbps) en la nube Azure con tu <b>PC 100% apagada</b> y gestión de Google Drive (10 TB).\n\n"
+        "👑 <b>Centro de Control OmniCloud Core 2.0</b>\n\n"
+        "Descargas ultrarrápidas (1.5 - 2.0 Gbps) en la nube Azure con tu <b>PC 100% apagada</b>, Inteligencia Artificial y gestión de Google Drive (10 TB).\n\n"
         "👇 <b>Toca cualquiera de los botones de abajo para empezar:</b>\n"
-        "• <b>🚀 Enviar Enlace:</b> Descarga archivos gigantes o torrents.\n"
+        "• <b>🚀 Enviar Enlace:</b> Descarga archivos gigantes, carpetas de Drive o torrents.\n"
         "• <b>🤝 Compartir Carpeta:</b> Comparte con amigos solo con su correo.\n"
         "• <b>📊 Estado de Descargas:</b> Mira tus descargas activas en Azure.\n"
-        "• <b>🧠 Asistente IA:</b> Pregúntame dudas de velocidad, formateo o uso."
+        "• <b>🧠 Asistente IA:</b> Búsqueda de los mejores proyectos en GitHub, conceptos técnicos y dudas."
     )
     send_message(chat_id, txt)
 
@@ -339,8 +402,8 @@ def show_download_prompt(chat_id):
         "📥 <b>PEGA AQUÍ CUALQUIER ENLACE PARA DESCARGAR</b>\n\n"
         "Puedo recibir:\n"
         "• 🌐 <b>Archivos Directos:</b> ISO, RAR, ZIP, EXE, MKV, MP4...\n"
+        "• 📦 <b>Google Drive:</b> Carpetas o archivos compartidos por terceros\n"
         "• 🧲 <b>Torrents / Magnets:</b> Enlaces <code>magnet:?xt=...</code>\n"
-        "• 📦 <b>Google Drive:</b> Carpetas o archivos de terceros\n"
         "• 🔴 <b>MEGA.nz / TeraBox:</b> Enlaces de descarga directa\n\n"
         "⚡ <i>Azure lo transferirá a 1.5 - 2.0 Gbps sin consumir tu conexión ni exigir que tu PC esté encendida.</i>\n\n"
         "👉 <b>Simplemente pega el enlace en este chat:</b>"
@@ -372,12 +435,17 @@ def show_link_options(chat_id, url, msg_id):
 
     url_lower = url.lower()
     is_big = any(ext in url_lower for ext in [".iso", ".rar", ".zip", ".tar", ".7z", ".img", ".mkv"])
+    is_drive = "drive.google.com" in url_lower
 
     txt = (
         "📦 <b>ENLACE DETECTADO CON ÉXITO</b>\n"
         f"<code>{escape_html(url_preview)}</code>\n\n"
-        "🎯 <b>¿Cómo deseas procesar esta descarga?</b>"
     )
+
+    if is_drive:
+        txt += "📁 <b>Enlace de Google Drive detectado:</b> Puedes clonarlo directamente de nube a nube sin que pase por tu PC."
+    else:
+        txt += "🎯 <b>¿Cómo deseas procesar esta descarga?</b>"
 
     buttons = [
         [{"text": "🚀 Descarga Estándar Turbo (Drive 10TB)", "callback_data": f"d:rot:{msg_id}"}]
@@ -418,20 +486,24 @@ def show_folder_options_for_email(chat_id, email):
 
 def show_ai_menu(chat_id):
     has_gemini = get_gemini_key() is not None
-    gemini_status = "✅ Google Gemini 2.0 Conectado" if has_gemini else "⚡ Motor Cognitivo Local Activo"
+    gemini_status = "✅ Google Gemini 2.0 Conectado" if has_gemini else "⚡ Motor de Búsqueda GitHub + Wikipedia Activo"
 
     txt = (
-        "🧠 <b>ASISTENTE INTELIGENTE OMNICLOUD</b>\n\n"
-        f"Estado: <b>{gemini_status}</b>\n"
-        "Puedo resolver cualquier duda sobre tus descargas, almacenamiento, formateo o archivos.\n\n"
-        "👇 <b>Toca una pregunta frecuente o escribe directamente en el chat:</b>"
+        "🧠 <b>ASISTENTE INTELIGENTE OMNICLOUD (SUPER-IA)</b>\n\n"
+        f"Estado: <b>{gemini_status}</b>\n\n"
+        "🔥 <b>¿Qué puedo hacer por ti?</b>\n"
+        "• <b>Buscar los mejores proyectos:</b> Escribe <i>'busca los mejores proyectos de IA'</i> o <i>'proyectos de Python'</i>.\n"
+        "• <b>Investigar cualquier tecnología:</b> Pregúntame qué es cualquier concepto, arquitectura o librería.\n"
+        "• <b>Dudas de tu sistema:</b> Velocidades de descarga, formateo seguro o uso de archivos.\n\n"
+        "👇 <b>Toca una opción rápida o escribe lo que quieras en el chat:</b>"
     )
     kbd = {
         "inline_keyboard": [
+            [{"text": "🔍 Buscar Proyectos de IA en GitHub", "callback_data": "ai:search:artificial intelligence agents"}],
+            [{"text": "🔍 Buscar Proyectos de Python en GitHub", "callback_data": "ai:search:python tools automation"}],
             [{"text": "⏱️ ¿Cuánto tardan 300GB, 500GB o 1TB?", "callback_data": "ai:faq:TIMING"}],
             [{"text": "🛡️ ¿Qué pasa si formateo mi PC?", "callback_data": "ai:faq:FORMATTING"}],
             [{"text": "📦 ¿Cómo se usa el auto-unidor .bat?", "callback_data": "ai:faq:JOINING"}],
-            [{"text": "🤝 ¿Cómo compartir sin que tengan Rclone?", "callback_data": "ai:faq:SHARING"}],
             [{"text": "🔑 Conectar Clave Gemini AI (Opcional)", "callback_data": "ai:faq:AI_SETUP"}]
         ]
     }
@@ -461,7 +533,7 @@ def execute_share(chat_id, folder, email, role="reader", remote="midrive"):
         send_message(chat_id, f"❌ Error en la operación: {translate_error(e)}")
 
 # =====================================================================
-# MOTOR DE PROCESAMIENTO DE LENGUAJE NATURAL (NLP)
+# ENRUTADOR DE PROCESAMIENTO DE LENGUAJE NATURAL (NLP) E INTELIGENCIA
 # =====================================================================
 def clean_text_for_nlp(text):
     text_norm = ''.join(c for c in unicodedata.normalize('NFD', text.lower()) if unicodedata.category(c) != 'Mn')
@@ -473,10 +545,12 @@ def process_natural_language(chat_id, text, msg_id):
     emails = re.findall(r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+', text)
     urls = re.findall(r'(https?://[^\s]+|magnet:\?[^\s]+)', text)
 
+    # 1. Si hay URL, priorizar menú de descarga
     if urls:
         show_link_options(chat_id, urls[0], msg_id)
         return
 
+    # 2. Configuración de API Key Gemini
     if text.startswith("/ia_key") or text.startswith("/key"):
         parts = text.split()
         if len(parts) > 1 and parts[1].startswith("AIzaSy"):
@@ -492,6 +566,21 @@ def process_natural_language(chat_id, text, msg_id):
         send_message(chat_id, "🎉 <b>¡Clave de Google Gemini vinculada con éxito!</b>\nEl cerebro de Gemini 2.0 Flash está activo para responderte libremente.")
         return
 
+    # 3. Intención: Búsqueda de proyectos en GitHub
+    if re.search(r'\b(busca|buscar|encuentra|mejores|top)\b.*\b(proyectos|repositorios|github|herramientas|librerias|frameworks)\b|\b(proyectos de|repos de)\b', norm):
+        send_message(chat_id, "🔍 <b>Consultando la base global de GitHub en tiempo real...</b>")
+        gh_results = search_github_projects(text)
+        send_message(chat_id, gh_results)
+        return
+
+    # 4. Intención: Conceptos Enciclopédicos (Wikipedia)
+    if re.search(r'\b(que es|quien es|definicion de|concepto de|explica que es)\b', norm):
+        wiki_res = search_wikipedia_summary(text)
+        if wiki_res:
+            send_message(chat_id, wiki_res)
+            return
+
+    # 5. Intención: Revocar acceso
     if re.search(r'\b(revoc|quit|elimin)\w*\s+(acceso|permiso)\b|\bquitale\b', norm):
         if emails:
             folder = "MEGAPACK_PROGRAMACION_COMPLETO"
@@ -507,6 +596,7 @@ def process_natural_language(chat_id, text, msg_id):
             send_message(chat_id, "ℹ️ Por favor incluye el correo de la persona a quien deseas revocarle el acceso (ej: <code>revocar amigo@gmail.com</code>).")
         return
 
+    # 6. Intención: Compartir carpeta
     if re.search(r'\b(compart|pasale|pasa|dale acceso|enviar acceso)\b', norm):
         if emails:
             folder = "MEGAPACK_PROGRAMACION_COMPLETO"
@@ -517,12 +607,14 @@ def process_natural_language(chat_id, text, msg_id):
             show_share_menu(chat_id)
         return
 
+    # 7. Intención: Estado de descargas
     if re.search(r'\b(como va|estado|que esta bajando|progreso|status|cola)\b', norm):
         st_msg = get_runs_status()
         kbd = {"inline_keyboard": [[{"text": "🔄 Actualizar Estado Ahora", "callback_data": "cmd:status"}]]}
         send_message(chat_id, st_msg, kbd)
         return
 
+    # 8. Intención: Ver permisos
     if re.search(r'\b(permiso|quien(es)? tiene(n)? acceso|lista de acceso)\b', norm):
         send_message(chat_id, "🔍 Consultando permisos en Google Drive...")
         perms = share_drive_folder.list_permissions("MEGAPACK_PROGRAMACION_COMPLETO", remote="midrive")
@@ -538,6 +630,7 @@ def process_natural_language(chat_id, text, msg_id):
             send_message(chat_id, "\n".join(lines))
         return
 
+    # 9. Intención: Sincronizar Megapack
     if re.search(r'\b(sincroniz|actualiz|sync)\b', norm):
         send_message(chat_id, "🔄 Disparando auto-sincronizador en la nube Azure...")
         ok, out = trigger_sync()
@@ -547,6 +640,7 @@ def process_natural_language(chat_id, text, msg_id):
             send_message(chat_id, f"❌ Error: {translate_error(out)}")
         return
 
+    # 10. Preguntas del Sistema (Tiempos, Formateo, Auto-unidor)
     if re.search(r'\b(cuanto|cuanto)\s+(tarda|demora|tomaria)\b|\b(500\s*gb|1\s*tb|300\s*gb|velocidad)\b', norm):
         send_message(chat_id, get_cognitive_answer("TIMING"))
         return
@@ -559,32 +653,46 @@ def process_natural_language(chat_id, text, msg_id):
         send_message(chat_id, get_cognitive_answer("JOINING"))
         return
 
+    # 11. Si solo envió un correo electrónico
     if emails and len(emails) == 1 and len(text.strip()) < 80:
         show_folder_options_for_email(chat_id, emails[0])
         return
 
-    # Si ninguna regla anterior capturó el mensaje: Pasar a Gemini AI o Asistente Cognitivo
+    # 12. Consultar Gemini AI si está disponible
     ai_reply = call_gemini_api(text)
     if ai_reply:
         send_message(chat_id, f"🤖 <b>OmniCloud AI (Gemini):</b>\n\n{ai_reply}")
         return
 
+    # 13. Fallback inteligente: Búsqueda dinámica en GitHub o Wikipedia
+    # Si la pregunta parece de tecnología o desarrollo, intentar buscar en GitHub
+    if any(k in norm for k in ["python", "javascript", "react", "flutter", "ia", "ai", "bot", "scraping", "api", "docker", "cloud"]):
+        gh_auto = search_github_projects(text)
+        if isinstance(gh_auto, str) and "🏆" in gh_auto:
+            send_message(chat_id, gh_auto)
+            return
+
+    # Menú guiado de ayuda
     welcome_msg = (
-        "🤖 <b>Asistente OmniCloud:</b>\n"
-        "Puedo ayudarte a descargar enlaces, compartir carpetas o resolver dudas sobre tus 10TB de almacenamiento.\n\n"
-        "👉 <i>Toca los botones de abajo o selecciona una de estas opciones rápidas:</i>"
+        "🤖 <b>Asistente Inteligente OmniCloud:</b>\n\n"
+        "Puedo buscarte los mejores proyectos en GitHub, ayudarte con descargas, compartir carpetas o resolver dudas sobre tu infraestructura.\n\n"
+        "👉 <i>Prueba escribiendo por ejemplo:</i>\n"
+        "• <i>'busca los mejores proyectos de IA'</i>\n"
+        "• <i>'busca repositorios de python para scraping'</i>\n"
+        "• <i>'¿cuánto tarda en descargar 500 GB?'</i>"
     )
     kbd = {
         "inline_keyboard": [
-            [{"text": "⏱️ Ver Tiempos de Descarga (500GB / 1TB)", "callback_data": "ai:faq:TIMING"}],
-            [{"text": "🛡️ Ver Qué Pasa Si Formateo Mi PC", "callback_data": "ai:faq:FORMATTING"}],
-            [{"text": "📦 Ver Cómo Montar ISOs y Archivos .bat", "callback_data": "ai:faq:JOINING"}]
+            [{"text": "🔍 Buscar Proyectos de IA en GitHub", "callback_data": "ai:search:artificial intelligence agents"}],
+            [{"text": "🔍 Buscar Proyectos de Python en GitHub", "callback_data": "ai:search:python tools automation"}],
+            [{"text": "⏱️ Ver Tiempos de Descarga", "callback_data": "ai:faq:TIMING"}],
+            [{"text": "🛡️ Ver Protección contra Formateo", "callback_data": "ai:faq:FORMATTING"}]
         ]
     }
     send_message(chat_id, welcome_msg, kbd)
 
 # =====================================================================
-# ENRUTADOR PRINCIPAL DE MENSAJES Y EVENTOS
+# ENRUTADOR PRINCIPAL DE ACTUALIZACIONES
 # =====================================================================
 def handle_update(up):
     if "message" in up:
@@ -653,6 +761,7 @@ def handle_update(up):
                 send_message(chat_id, f"❌ Error al iniciar: {translate_error(err)}")
             return
 
+        # Botones Fijos de la Pantalla
         if text == "🚀 Enviar Enlace / Descargar":
             show_download_prompt(chat_id)
             return
@@ -724,6 +833,7 @@ def handle_update(up):
                 send_message(chat_id, f"❌ Error: {translate_error(out)}")
             return
 
+        # Procesamiento por Lenguaje Natural e Inteligencia Artificial
         process_natural_language(chat_id, text, msg_id)
 
     elif "callback_query" in up:
@@ -755,6 +865,13 @@ def handle_update(up):
                 send_message(chat_id, "✅ ¡Auto-sincronizador lanzado con éxito!")
             else:
                 send_message(chat_id, f"❌ Error: {translate_error(out)}")
+
+        # Búsqueda de proyectos desde botones táctiles
+        elif data.startswith("ai:search:"):
+            q = data.split("ai:search:")[1]
+            send_message(chat_id, f"🔍 <b>Buscando los mejores proyectos de '{q}' en GitHub...</b>")
+            gh_res = search_github_projects(q)
+            send_message(chat_id, gh_res)
 
         elif data.startswith("ai:faq:"):
             topic = data.split("ai:faq:")[1]
@@ -871,17 +988,20 @@ def handle_update(up):
                 send_message(chat_id, "⚠️ No se encontró el enlace en memoria. Por favor vuelve a enviarlo.")
 
 # =====================================================================
-# BUCLE PRINCIPAL (LONG POLLING RESILIENTE)
+# BUCLE PRINCIPAL (LONG POLLING CON AUTO-RECUPERACIÓN BLINDADA)
 # =====================================================================
 def main():
-    print("=" * 65)
-    print("  OMNICLOUD CORE - TELEGRAM BOT POLLER CON IA INTEGRADA")
-    print(f"  Bot: @VexorOmniBot")
-    print(f"  Usuario Autorizado: {AUTH_CHAT_ID} (Julio)")
+    print("=" * 65, flush=True)
+    print("  OMNICLOUD CORE 2.0 - TELEGRAM BOT POLLER ULTRA-BLINDADO", flush=True)
+    print(f"  Bot: @VexorOmniBot", flush=True)
+    print(f"  Usuario Autorizado: {AUTH_CHAT_ID} (Julio)", flush=True)
     has_ai = get_gemini_key() is not None
-    print(f"  Motor de IA: {'Google Gemini 2.0 Flash + Cognitivo' if has_ai else 'Cognitivo Local (Clave Gemini opcional)'}")
-    print("=" * 65)
+    print(f"  Motor de IA: {'Google Gemini 2.0 Flash + GitHub Live Search' if has_ai else 'GitHub Live Discovery + Wikipedia (Clave Gemini opcional)'}", flush=True)
+    print("=" * 65, flush=True)
+
     offset = 0
+    consecutive_errors = 0
+
     while True:
         try:
             url = f"{API_BASE}/getUpdates?offset={offset}&timeout=30"
@@ -892,8 +1012,13 @@ def main():
             for up in data.get("result", []):
                 offset = up["update_id"] + 1
                 handle_update(up)
+
+            consecutive_errors = 0
         except Exception as e:
-            time.sleep(2)
+            consecutive_errors += 1
+            wait_sec = min(consecutive_errors * 2, 20)
+            print(f"[REINTENTO BLINDADO] Conexión pausada ({e}). Reintentando en {wait_sec}s...", flush=True)
+            time.sleep(wait_sec)
 
 if __name__ == "__main__":
     main()

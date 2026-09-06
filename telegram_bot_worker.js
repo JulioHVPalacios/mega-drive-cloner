@@ -1,7 +1,7 @@
 /**
- * OMNICLOUD CORE - TELEGRAM BOT SERVERLESS WORKER (CLOUDFLARE EDGE)
+ * OMNICLOUD CORE 2.0 - TELEGRAM BOT SERVERLESS WORKER (CLOUDFLARE EDGE)
  * 100% Gratuito - Siempre Activo 24/7 - Cero PC Encendida - Latencia Ultrabaja
- * Incluye Teclado Táctil Persistente, Asistente Cognitivo IA y Gestión Remota
+ * Incluye Teclado Táctil Persistente, Búsqueda de Proyectos en Vivo, IA y Gestión Remota
  */
 
 const MAIN_KEYBOARD = {
@@ -49,8 +49,8 @@ export default {
         if (text === '🚀 Enviar Enlace / Descargar' || norm === 'descargar') {
           const dlPrompt = '📥 <b>PEGA AQUÍ CUALQUIER ENLACE PARA DESCARGAR</b>\n\n' +
             '• 🌐 <b>Archivos Directos:</b> ISO, RAR, ZIP, EXE, MKV...\n' +
-            '• 🧲 <b>Torrents / Magnets:</b> Enlaces <code>magnet:?xt=...</code>\n' +
             '• 📦 <b>Google Drive:</b> Carpetas o archivos compartidos por terceros\n' +
+            '• 🧲 <b>Torrents / Magnets:</b> Enlaces <code>magnet:?xt=...</code>\n' +
             '• 🔴 <b>MEGA.nz / TeraBox:</b> Descargas a máxima velocidad\n\n' +
             '⚡ <i>Azure transferirá los archivos a 1.5 - 2.0 Gbps directo a tu Google Drive sin que tu PC esté encendida.</i>';
           await sendTG(botToken, chatId, dlPrompt);
@@ -84,25 +84,46 @@ export default {
         }
 
         if (text === '🧠 Asistente IA' || norm === '/ia' || norm === 'ayuda') {
-          const aiPrompt = '🧠 <b>ASISTENTE INTELIGENTE OMNICLOUD</b>\n\n' +
-            'Resuelvo cualquier duda sobre velocidades, formateo o uso de tus 10TB de Drive.\n\n' +
-            '👇 <b>Toca una pregunta para ver la respuesta:</b>';
+          const aiPrompt = '🧠 <b>ASISTENTE INTELIGENTE OMNICLOUD (SUPER-IA)</b>\n\n' +
+            '🔥 <b>¿Qué puedo hacer por ti?</b>\n' +
+            '• <b>Buscar los mejores proyectos:</b> Escribe <i>"busca los mejores proyectos de IA"</i> o <i>"proyectos de Python"</i>.\n' +
+            '• <b>Investigar conceptos:</b> Pregúntame qué es cualquier tecnología o arquitectura.\n' +
+            '• <b>Dudas de tu sistema:</b> Velocidades, formateo o uso de archivos.\n\n' +
+            '👇 <b>Toca una opción rápida o escribe lo que desees en el chat:</b>';
           const kbd = {
             inline_keyboard: [
+              [{ text: '🔍 Buscar Proyectos de IA en GitHub', callback_data: 'ai:search:artificial intelligence agents' }],
+              [{ text: '🔍 Buscar Proyectos de Python en GitHub', callback_data: 'ai:search:python tools automation' }],
               [{ text: '⏱️ ¿Cuánto tardan 300GB, 500GB o 1TB?', callback_data: 'ai:faq:TIMING' }],
               [{ text: '🛡️ ¿Qué pasa si formateo mi PC?', callback_data: 'ai:faq:FORMATTING' }],
-              [{ text: '📦 ¿Cómo se usa el auto-unidor .bat?', callback_data: 'ai:faq:JOINING' }],
-              [{ text: '🤝 ¿Cómo compartir sin Rclone?', callback_data: 'ai:faq:SHARING' }]
+              [{ text: '📦 ¿Cómo se usa el auto-unidor .bat?', callback_data: 'ai:faq:JOINING' }]
             ]
           };
           await sendTG(botToken, chatId, aiPrompt, kbd);
           return new Response('OK', { status: 200 });
         }
 
+        // Búsqueda de proyectos en GitHub (Live Search)
+        if (norm.match(/\b(busca|buscar|encuentra|mejores|top)\b.*\b(proyectos|repositorios|github|herramientas|librerias)\b|\b(proyectos de|repos de)\b/)) {
+          await sendTG(botToken, chatId, '🔍 <b>Consultando la base global de GitHub en tiempo real...</b>');
+          const ghRes = await searchGitHub(text, pat);
+          await sendTG(botToken, chatId, ghRes);
+          return new Response('OK', { status: 200 });
+        }
+
+        // Preguntas Conceptuales / Wikipedia
+        if (norm.match(/\b(que es|quien es|definicion de|concepto de|explica que es)\b/)) {
+          const wikiRes = await searchWiki(text);
+          if (wikiRes) {
+            await sendTG(botToken, chatId, wikiRes);
+            return new Response('OK', { status: 200 });
+          }
+        }
+
         // Bienvenida
         if (text === '/start' || text === '/help' || norm === 'hola' || norm === 'menu') {
-          const welcome = '👑 <b>Centro de Control OmniCloud Core (Cloudflare Edge 24/7)</b>\n\n' +
-            'Descargas ultrarrápidas a 1.5 - 2.0 Gbps en la nube Azure con tu <b>PC 100% apagada</b>.\n\n' +
+          const welcome = '👑 <b>Centro de Control OmniCloud Core 2.0 (Cloudflare Edge 24/7)</b>\n\n' +
+            'Descargas ultrarrápidas a 1.5 - 2.0 Gbps en la nube Azure con tu <b>PC 100% apagada</b>, Inteligencia Artificial y gestión de Google Drive.\n\n' +
             '👇 <b>Toca cualquiera de los botones grandes de abajo para empezar:</b>';
           await sendTG(botToken, chatId, welcome);
           return new Response('OK', { status: 200 });
@@ -122,11 +143,16 @@ export default {
           return new Response('OK', { status: 200 });
         }
 
-        // Detección de Enlaces (HTTP, HTTPS, Magnet)
+        // Detección de Enlaces (HTTP, HTTPS, Magnet, Drive)
         if (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('magnet:') || text.endsWith('.torrent')) {
           const isBig = text.match(/\.(iso|rar|zip|tar|7z|img|mkv)($|\?)/i);
-          const reply = '📦 <b>Enlace Detectado:</b>\n<code>' + escapeHtml(text.slice(0, 100)) + '</code>\n\n' +
-            '🎯 <b>Selecciona a qué nube deseas enviarlo:</b>';
+          const isDrive = text.includes('drive.google.com');
+
+          let reply = '📦 <b>Enlace Detectado:</b>\n<code>' + escapeHtml(text.slice(0, 100)) + '</code>\n\n';
+          if (isDrive) {
+            reply += '📁 <b>Google Drive detectado:</b> Puedes clonarlo directamente de nube a nube sin que pase por tu PC.\n\n';
+          }
+          reply += '🎯 <b>Selecciona el destino:</b>';
 
           const buttons = [
             [{ text: '🚀 Google Drive (Rotación Julio + Vexor 10TB)', callback_data: 'd:rot' }]
@@ -158,7 +184,16 @@ export default {
           }
         }
 
-        await sendTG(botToken, chatId, 'ℹ️ Envíame un enlace para descargar o toca los botones de abajo para gestionar tu nube.');
+        // Si parece tema de programación, buscar automáticamente en GitHub
+        if (norm.match(/\b(python|javascript|react|flutter|ia|ai|scraping|docker|api|cloud)\b/)) {
+          const ghAuto = await searchGitHub(text, pat);
+          if (ghAuto && ghAuto.includes('🏆')) {
+            await sendTG(botToken, chatId, ghAuto);
+            return new Response('OK', { status: 200 });
+          }
+        }
+
+        await sendTG(botToken, chatId, 'ℹ️ Envíame un enlace para descargar, o escribe por ejemplo: <i>"busca los mejores proyectos de IA"</i>.');
       }
 
       // 2. Callback Queries (Botones Táctiles)
@@ -176,6 +211,11 @@ export default {
           await handleStatus(botToken, chatId, repo, pat);
         } else if (data === 'cmd:sync') {
           await triggerSync(botToken, chatId, repo, pat);
+        } else if (data.startsWith('ai:search:')) {
+          const q = data.split('ai:search:')[1];
+          await sendTG(botToken, chatId, `🔍 <b>Buscando proyectos de '${q}' en GitHub...</b>`);
+          const ghRes = await searchGitHub(q, pat);
+          await sendTG(botToken, chatId, ghRes);
         } else if (data.startsWith('ai:faq:')) {
           const topic = data.split('ai:faq:')[1];
           await sendTG(botToken, chatId, getFaqAnswer(topic));
@@ -209,6 +249,48 @@ export default {
   }
 };
 
+async function searchGitHub(query, pat = null) {
+  try {
+    const cleanQ = query.replace(/\b(busca|buscar|encuentra|mejores|los|de|para|proyectos|repositorios|github|top|herramientas|librerias|frameworks)\b/gi, '').trim() || query;
+    const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(cleanQ)}&sort=stars&order=desc&per_page=5`;
+    const headers = { 'User-Agent': 'OmniCloud-AI-Bot', 'Accept': 'application/vnd.github+json' };
+    if (pat) headers['Authorization'] = `Bearer ${pat}`;
+
+    const res = await fetch(url, { headers });
+    const data = await res.json();
+    const items = data.items || [];
+    if (items.length === 0) return 'ℹ️ No se encontraron repositorios para esa búsqueda.';
+
+    let msg = `🏆 <b>LOS MEJORES PROYECTOS EN GITHUB (${cleanQ.toUpperCase()}):</b>\n\n`;
+    items.forEach((it, idx) => {
+      const desc = it.description || 'Sin descripción disponible';
+      msg += `<b>${idx + 1}. <a href='${it.html_url}'>${it.full_name}</a></b>\n`;
+      msg += `⭐ <b>${it.stargazers_count.toLocaleString()} estrellas</b> | 🍴 ${it.forks_count.toLocaleString()} forks | 💻 <code>${it.language || 'General'}</code>\n`;
+      msg += `📝 <i>${escapeHtml(desc.slice(0, 160))}...</i>\n\n`;
+    });
+    msg += '💡 <i>Toca cualquier enlace para abrir el repositorio directamente en GitHub.</i>';
+    return msg;
+  } catch (e) {
+    return '❌ Error al consultar GitHub: ' + e.message;
+  }
+}
+
+async function searchWiki(query) {
+  try {
+    const cleanQ = query.replace(/\b(que es|quien es|definicion de|concepto de|explica que es)\b/gi, '').trim() || query;
+    const url = `https://es.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cleanQ.replace(/ /g, '_'))}`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'OmniCloudBot/2.0' } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.extract) {
+      return `📖 <b>${escapeHtml(data.title)}</b>\n\n${escapeHtml(data.extract)}\n\n🔗 <a href='${data.content_urls?.desktop?.page || ''}'>Leer artículo en Wikipedia</a>`;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function getFaqAnswer(topic) {
   if (topic === 'TIMING') {
     return '⏱️ <b>TIEMPOS CERTIFICADOS DE TRANSFERENCIA</b>\n\n' +
@@ -227,9 +309,6 @@ function getFaqAnswer(topic) {
       'OmniCloud deposita automáticamente en su carpeta:\n' +
       '👉 <b>DOBLE_CLIC_AQUI_PARA_UNIR.bat</b>\n\n' +
       'Ellos solo hacen doble clic en Windows y en 5 segundos se ensambla y se monta como disco virtual sin saber de comandos.';
-  } else if (topic === 'SHARING') {
-    return '🤝 <b>COMPARTICIÓN SIN RCLONE</b>\n\n' +
-      'Tus amigos o clientes no necesitan instalar nada ni saber de computación. Solo necesitas su correo Gmail y la carpeta aparece al instante en su pestaña "Compartido conmigo" en Google Drive.';
   }
   return 'ℹ️ Escribe lo que necesites y te orientaré.';
 }
