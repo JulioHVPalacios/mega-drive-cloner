@@ -1,0 +1,39 @@
+name: 🌐 Desplegar Bot de Telegram 24/7 en Cloudflare (PC Apagada)
+
+on:
+  workflow_dispatch:
+    inputs:
+      auto_set_webhook:
+        description: '¿Vincular Webhook de Telegram automáticamente tras el despliegue?'
+        type: boolean
+        default: true
+        required: true
+
+jobs:
+  desplegar_cloudflare:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Clonar Repositorio
+        uses: actions/checkout@v4
+
+      - name: 🚀 Desplegar a Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: deploy telegram_bot_worker.js --name omnicloud-telegram-bot
+
+      - name: 🔗 Configurar Webhook en Telegram
+        if: ${{ inputs.auto_set_webhook }}
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CF_SUBDOMAIN: ${{ secrets.CLOUDFLARE_SUBDOMAIN }}
+        run: |
+          if [ -n "$CF_SUBDOMAIN" ]; then
+            WORKER_URL="https://omnicloud-telegram-bot.${CF_SUBDOMAIN}.workers.dev"
+            echo "Conectando Telegram Webhook a: $WORKER_URL"
+            curl -s "https://api.telegram.org/bot${TG_TOKEN}/setWebhook?url=${WORKER_URL}"
+            echo ""
+            echo "✅ ¡Webhook vinculado exitosamente con Cloudflare!"
+          else
+            echo "ℹ️ Worker desplegado. Puedes usar 'configurar_webhook_nube_24_7.bat' con tu URL de worker."
+          fi
