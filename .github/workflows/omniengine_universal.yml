@@ -529,7 +529,7 @@ jobs:
               f"🏆 <b>¡AUDITORÍA CERTIFICADA MONOLITHIC STREAM ({total_gb:.2f} GB)!</b>\n\n"
               f"📦 <b>Volumen Total Auditado:</b> {total_gb:.2f} GB ({total_count} ISOs monolíticas)\n\n"
               f"📊 <b>Desglose por Servidor:</b>\n{breakdown_str}\n\n"
-              f"⚡ <b>Rendimiento:</b> 2 Nodos en Paralelo (< 4 Minutos)\n"
+              f"⚡ <b>Rendimiento:</b> 2 Nodos en Paralelo (Menos de 4 Minutos)\n"
               f"🛡️ <b>Purga Post-Auditoría:</b> {'Completada (0 B ocupados en tus drives)' if purge else 'Conservada'}"
           )
           EOF
