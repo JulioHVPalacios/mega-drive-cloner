@@ -52,7 +52,7 @@ export default {
       const botToken = env.TELEGRAM_BOT_TOKEN || '8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI';
       const authChatId = String(env.AUTHORIZED_CHAT_ID || '1136933800');
       const repo = env.GITHUB_REPO || 'JulioHVPalacios/mega-drive-cloner';
-      const pat = env.GITHUB_PAT;
+      const pat = env.GITHUB_PAT || '';
       const geminiKey = env.GEMINI_API_KEY || '';
       const openRouterKey = env.OPENROUTER_API_KEY || '';
 
@@ -79,13 +79,13 @@ export default {
           return new Response('OK', { status: 200 });
         }
 
-        // 1.1 Ver Permisos en Google Drive (Directo en la nube)
+        // 1.1 Ver Permisos en Google Drive
         if (text === '\u{1F465} Ver Permisos' || norm === '/permisos' || norm === 'permisos' || norm.includes('ver permiso')) {
           await handleListPermissions(botToken, chatId, env, DEFAULT_FOLDER_ID, DEFAULT_FOLDER_NAME);
           return new Response('OK', { status: 200 });
         }
 
-        // 1.2 Compartir Carpeta de Google Drive (Directo en la nube)
+        // 1.2 Compartir Carpeta de Google Drive
         if (text === '\u{1F91D} Compartir Carpeta' || norm === '/compartir' || norm.startsWith('/compartir') || norm.startsWith('compartir')) {
           const parts = text.split(/\s+/);
           const email = parts.find(p => p.includes('@'));
@@ -103,8 +103,8 @@ export default {
               '\u{1F4C1} <i>O toca una opci\u00f3n abajo:</i>';
             const kbd = {
               inline_keyboard: [
-                [{ text: '\u{1F465} Ver Qui\u00e9nes Tienen Acceso', callback_data: `drive:perms:${DEFAULT_FOLDER_ID}:${DEFAULT_FOLDER_NAME}` }],
-                [{ text: '\u{1F4C1} Ver Todas Mis Carpetas', callback_data: 'drive:folders' }]
+                [{ text: '\u{1F465} Ver Qui\u00e9nes Tienen Acceso', callback_data: 'p:def' }],
+                [{ text: '\u{1F4C1} Ver Todas Mis Carpetas', callback_data: 'd:folders' }]
               ]
             };
             await sendTG(botToken, chatId, sharePrompt, kbd);
@@ -143,7 +143,7 @@ export default {
           return new Response('OK', { status: 200 });
         }
 
-        // 1.6 Estado de Descargas
+        // 1.6 Estado de Descargas (Consulta p\u00fablica a GitHub Actions)
         if (text === '\u{1F4CA} Estado de Descargas' || norm === '/status' || norm.includes('como va') || norm.includes('estado')) {
           await handleStatus(botToken, chatId, repo, pat);
           return new Response('OK', { status: 200 });
@@ -295,13 +295,13 @@ export default {
           await handleStatus(botToken, chatId, repo, pat);
         } else if (data === 'cmd:sync') {
           await triggerSync(botToken, chatId, repo, pat);
-        } else if (data === 'drive:folders') {
+        } else if (data === 'd:folders') {
           await handleListFolders(botToken, chatId, env);
-        } else if (data.startsWith('drive:perms:')) {
-          const parts = data.split(':');
-          const fid = parts[2];
-          const fname = parts[3] || 'Carpeta';
-          await handleListPermissions(botToken, chatId, env, fid, fname);
+        } else if (data === 'p:def') {
+          await handleListPermissions(botToken, chatId, env, DEFAULT_FOLDER_ID, DEFAULT_FOLDER_NAME);
+        } else if (data.startsWith('p:')) {
+          const fid = data.slice(2);
+          await handleListPermissions(botToken, chatId, env, fid, 'Carpeta');
         } else if (data.startsWith('ai:search:')) {
           const q = data.split('ai:search:')[1];
           await sendTG(botToken, chatId, `\u{1F50D} <b>Buscando proyectos de '${q}' en GitHub...</b>`);
@@ -399,8 +399,8 @@ async function handleListPermissions(botToken, chatId, env, folderId = DEFAULT_F
 
     const kbd = {
       inline_keyboard: [
-        [{ text: '\u{1F4C1} Ver Mis Carpetas en Drive', callback_data: 'drive:folders' }],
-        [{ text: '\u{1F504} Actualizar Permisos', callback_data: `drive:perms:${folderId}:${folderName}` }]
+        [{ text: '\u{1F4C1} Ver Mis Carpetas en Drive', callback_data: 'd:folders' }],
+        [{ text: '\u{1F504} Actualizar Permisos', callback_data: 'p:def' }]
       ]
     };
     await sendTG(botToken, chatId, msg, kbd);
@@ -503,7 +503,7 @@ async function handleListFolders(botToken, chatId, env) {
     }
 
     const q = encodeURIComponent("mimeType = 'application/vnd.google-apps.folder' and 'me' in owners and trashed = false");
-    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=12&fields=files(id,name,webViewLink)`;
+    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=10&fields=files(id,name,webViewLink)`;
     const res = await fetch(url, { headers: { 'Authorization': `Bearer ${tok}` } });
     const data = await res.json();
     const files = data.files || [];
@@ -516,13 +516,13 @@ async function handleListFolders(botToken, chatId, env) {
     let msg = `\u{1F4C1} <b>TUS CARPETAS EN GOOGLE DRIVE (JULIO):</b>\n\n`;
     const buttons = [];
 
-    files.slice(0, 8).forEach((f, idx) => {
+    files.slice(0, 6).forEach((f, idx) => {
       msg += `<b>${idx + 1}. <a href='${f.webViewLink}'>${escapeHtml(f.name)}</a></b>\n`;
       msg += `ID: <code>${f.id}</code>\n\n`;
-      buttons.push([{ text: `\u{1F465} Permisos: ${f.name.slice(0, 22)}`, callback_data: `drive:perms:${f.id}:${f.name.slice(0, 25)}` }]);
+      buttons.push([{ text: `\u{1F465} Permisos: ${f.name.slice(0, 20)}`, callback_data: `p:${f.id}` }]);
     });
 
-    msg += `\u{1F4A1} <i>Toca cualquiera de los botones para ver los permisos de esa carpeta o escribe: <code>/compartir correo@gmail.com</code></i>`;
+    msg += `\u{1F4A1} <i>Toca un bot\u00f3n para ver los permisos o comparte con: <code>/compartir amigo@gmail.com</code></i>`;
     await sendTG(botToken, chatId, msg, { inline_keyboard: buttons });
   } catch (e) {
     await sendTG(botToken, chatId, '\u274c Error al listar carpetas: ' + e.message);
@@ -619,28 +619,30 @@ async function sendTG(token, chatId, text, keyboard = null) {
 
 async function handleStatus(token, chatId, repo, pat) {
   try {
-    if (!pat) {
-      await sendTG(token, chatId, '\u26a0\ufe0f GITHUB_PAT no configurado en Cloudflare Workers.');
-      return;
-    }
-    const res = await fetch(`https://api.github.com/repos/${repo}/actions/runs?per_page=3`, {
-      headers: {
-        'Authorization': `Bearer ${pat}`,
-        'User-Agent': 'OmniCloud-Telegram-Bot',
-        'Accept': 'application/vnd.github+json'
-      }
-    });
+    const headers = {
+      'User-Agent': 'OmniCloud-Telegram-Bot',
+      'Accept': 'application/vnd.github+json'
+    };
+    if (pat) headers['Authorization'] = `Bearer ${pat}`;
+
+    const res = await fetch(`https://api.github.com/repos/${repo}/actions/runs?per_page=4`, { headers });
     const data = await res.json();
     const runs = data.workflow_runs || [];
     if (runs.length === 0) {
-      await sendTG(token, chatId, '\u2139\ufe0f No hay ejecuciones recientes en GitHub Actions.');
+      await sendTG(token, chatId, '\u2139\ufe0f No hay descargas activas o ejecuciones recientes en GitHub Actions / Azure.');
       return;
     }
     let msg = '\u{1F4CA} <b>ESTADO DE DESCARGAS EN VIVO (AZURE CLOUD):</b>\n\n';
     for (const r of runs) {
-      const icon = r.status === 'completed' ? (r.conclusion === 'success' ? '\u2705' : '\u274c') : '\u{1F504}';
-      msg += `${icon} <b>${escapeHtml(r.name || 'Tarea')}</b>\nEstado: <code>${r.status} (${r.conclusion || 'en curso'})</code>\nID: <code>${r.id}</code>\n\n`;
+      const isSuccess = r.conclusion === 'success';
+      const isCompleted = r.status === 'completed';
+      const icon = isCompleted ? (isSuccess ? '\u2705' : '\u274c') : '\u{1F504}';
+      const desc = isCompleted ? (isSuccess ? 'Completado al 100%' : `Detenido (${r.conclusion})`) : 'Descargando en Azure (PC Apagada)';
+      msg += `${icon} <b>${escapeHtml(r.name || 'Tarea')}</b>\n`;
+      msg += `\u2022 Estado: <code>${desc}</code>\n`;
+      msg += `\u2022 ID de tarea: <code>${r.id}</code>\n\n`;
     }
+    msg += '\u{1F4A1} <i>Los servidores de Azure trabajan de forma independiente con tu PC 100% apagada.</i>';
     await sendTG(token, chatId, msg);
   } catch (e) {
     await sendTG(token, chatId, '\u274c Error al consultar GitHub: ' + e.message);
@@ -650,7 +652,7 @@ async function handleStatus(token, chatId, repo, pat) {
 async function triggerSync(token, chatId, repo, pat) {
   try {
     if (!pat) {
-      await sendTG(token, chatId, '\u26a0\ufe0f GITHUB_PAT no configurado en Cloudflare Workers.');
+      await sendTG(token, chatId, '\u26a0\ufe0f Para disparar tareas autom\u00e1ticas de sincronizaci\u00f3n desde el celular necesitas agregar GITHUB_PAT en Cloudflare.');
       return;
     }
     await sendTG(token, chatId, '\u{1F504} Disparando verificaci\u00f3n del Megapack en Azure...');
@@ -677,7 +679,7 @@ async function triggerSync(token, chatId, repo, pat) {
 async function triggerSwarm(token, chatId, repo, pat) {
   try {
     if (!pat) {
-      await sendTG(token, chatId, '\u26a0\ufe0f GITHUB_PAT no configurado en Cloudflare Workers.');
+      await sendTG(token, chatId, '\u26a0\ufe0f GITHUB_PAT necesario para lanzar flujos de GitHub Actions.');
       return;
     }
     await sendTG(token, chatId, '\u26a1 <b>Desplegando Enjambre Swarm Multi-Nodo en Azure Cloud...</b>\n4 nodos concurrentes descargar\u00e1n a m\u00e1xima velocidad.');
@@ -707,7 +709,7 @@ async function triggerSwarm(token, chatId, repo, pat) {
 async function triggerDownload(token, chatId, repo, pat, url, target) {
   try {
     if (!pat) {
-      await sendTG(token, chatId, '\u26a0\ufe0f GITHUB_PAT no configurado en Cloudflare Workers.');
+      await sendTG(token, chatId, '\u26a0\ufe0f GITHUB_PAT necesario para lanzar flujos de GitHub Actions.');
       return;
     }
     await sendTG(token, chatId, `\u{1F680} <b>Transmitiendo orden a Azure...</b>\n\u{1F3AF} Destino: <i>${target}</i>\nTu PC puede seguir apagada.`);
