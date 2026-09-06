@@ -337,7 +337,24 @@ jobs:
               if any(k in source.lower() for k in ['terabox', '1024tera', 'mirrobox', '4funbox']):
                   print('📦 Detectado enlace TeraBox. Preparando ingestión directa...')
 
-              if 'Streaming RAM' in mode:
+              # Si es stream de video o CDN de redes sociales sin extension .mp4 en URL
+              if any(k in source.lower() for k in ['tiktok', 'tikwm', 'mime_type=video_mp4', 'video/tos', 'tikcdn']):
+                  print('🎬 Detectado video streaming TikTok/Redes en alta definicion...')
+                  os.makedirs('/tmp/media_dl', exist_ok=True)
+                  out_file = '/tmp/media_dl/Video_TikTok_UltraHD_1080p.mp4'
+                  curl_cmd = [
+                      'curl', '-L', '-s',
+                      '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                      '-H', 'Referer: https://www.tiktok.com/',
+                      '-o', out_file,
+                      source
+                  ]
+                  subprocess.run(curl_cmd, check=True)
+                  print('📤 Subiendo video 1080p Ultra HD a tu Google Drive con extension .mp4 oficial...')
+                  cmd1 = ['rclone', 'copy', out_file, dest_remote] + turbo_flags + ['-P', '-v']
+                  cmd2 = ['rclone', 'copy', out_file, fallback_remote] + turbo_flags + ['-P', '-v'] if fallback_remote else None
+                  run_with_failover(cmd1, cmd2)
+              elif 'Streaming RAM' in mode:
                   print('🌊 Activando Streaming en Memoria RAM con Chunks Turbo (Zero Disco)...')
                   print('🚀 Este modo transfiere ISOs gigantes de 500GB/1TB/2TB directo a tu nube!')
                   http_flags = [f for f in turbo_flags if f != '--checksum']
