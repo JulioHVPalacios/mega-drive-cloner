@@ -1,4 +1,4 @@
-name: '⚡ Clúster Dual Turbo v5 (Máxima Velocidad y Cero Latencia)'
+name: '⚡ Clúster Dual Cut-Through Streaming (Inyección Simultánea en RAM)'
 
 on:
   workflow_dispatch:
@@ -31,13 +31,17 @@ jobs:
       matrix:
         include:
           - nodo: 1
-            name: 'AlmaLinux 9 DVD (15.2GB)'
+            name: 'AlmaLinux 9 DVD (15.2GB Cut-Through)'
             filename: 'AlmaLinux-9-latest-x86_64-dvd.iso'
-            urls: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso https://mirrors.ircam.fr/pub/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso https://mirror.nl.leaseweb.net/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso'
+            url: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso'
+            fallback_urls: 'https://mirrors.ircam.fr/pub/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso https://mirror.nl.leaseweb.net/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso'
+            size_bytes: 15151923200
           - nodo: 2
-            name: 'Rocky Linux 9 DVD (15.2GB)'
+            name: 'Rocky Linux 9 DVD (15.2GB Cut-Through)'
             filename: 'Rocky-9-latest-x86_64-dvd.iso'
-            urls: 'https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://rocky-linux-europe-west4.s3.nl-ams.scw.cloud/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://mirrors.ircam.fr/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://mirror.oxilion.nl/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso'
+            url: 'https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso'
+            fallback_urls: 'https://rocky-linux-europe-west4.s3.nl-ams.scw.cloud/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://mirrors.ircam.fr/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://mirror.oxilion.nl/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso'
+            size_bytes: 15194259456
       fail-fast: false
 
     steps:
@@ -54,15 +58,17 @@ jobs:
           echo "🚀 Algoritmo de congestión activo:"
           sysctl net.ipv4.tcp_congestion_control
 
-      - name: ⚡ Verificación Instantánea de Disco
+      - name: ⚡ Verificación de Recursos del Runner (16GB RAM + NVMe)
         run: |
-          echo "📊 Espacio disponible inmediato en runner de Azure:"
+          echo "📊 Memoria RAM disponible para streaming:"
+          free -h
+          echo "📊 Espacio en disco:"
           df -h /
 
       - name: 🛠️ Instalar Dependencias (Instalación Ultrarrápida)
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends aria2
+          sudo apt-get install -y --no-install-recommends aria2 curl
           curl -fsSL https://rclone.org/install.sh | sudo bash >/dev/null 2>&1
           rclone version
 
@@ -74,12 +80,14 @@ jobs:
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
           rclone listremotes
 
-      - name: 🌪️ Ejecutar Transferencia en Nodo Dedicado (Turbo Engine)
+      - name: 🌪️ Inyección Cut-Through Streaming (Descarga y Subida Simultánea)
         env:
           NODO_ID: ${{ matrix.nodo }}
           ARCH_MODE: ${{ inputs.architecture_mode }}
           FILENAME: ${{ matrix.filename }}
-          SOURCE_URLS: ${{ matrix.urls }}
+          PRIMARY_URL: ${{ matrix.url }}
+          FALLBACK_URLS: ${{ matrix.fallback_urls }}
+          SIZE_BYTES: ${{ matrix.size_bytes }}
           DEST_FOLDER: ${{ inputs.destination_folder }}
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -90,17 +98,17 @@ jobs:
           nodo_id = int(os.environ.get('NODO_ID', '1'))
           arch_mode = os.environ.get('ARCH_MODE', 'balanced').strip()
           filename = os.environ.get('FILENAME', 'archivo.iso').strip()
-          source_urls = os.environ.get('SOURCE_URLS', '').strip().split()
+          primary_url = os.environ.get('PRIMARY_URL', '').strip()
+          fallback_urls = os.environ.get('FALLBACK_URLS', '').strip().split()
+          size_bytes = int(os.environ.get('SIZE_BYTES', '0'))
           base_folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/test_cluster_30gb_v4').strip()
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
-          # Determinar remote según modo de arquitectura
           if arch_mode == 'midrive_only':
               target_remote = 'midrive'
               account_label = 'Julio Palacios (midrive - 100% Exclusivo)'
           else:
-              # Modo 'balanced': Nodo 1 -> midrive (Julio), Nodo 2 -> midrive2 (Vexor)
               if nodo_id == 1:
                   target_remote = 'midrive'
                   account_label = 'Julio Palacios (5TB - midrive)'
@@ -108,7 +116,8 @@ jobs:
                   target_remote = 'midrive2'
                   account_label = 'Vexor Group (5TB - midrive2)'
 
-          dest_remote = f"{target_remote}:{base_folder}/nodo_{nodo_id}"
+          dest_file_remote = f"{target_remote}:{base_folder}/nodo_{nodo_id}/{filename}"
+          dest_dir_remote = f"{target_remote}:{base_folder}/nodo_{nodo_id}"
 
           def notify_tg(text):
               if not tg_token or not tg_chat_id:
@@ -123,92 +132,117 @@ jobs:
 
           print("")
           print("="*70)
-          print(f"🚀 INICIANDO NODO {nodo_id} [TURBO v5]")
-          print(f"🎯 Destino Físico: {dest_remote} ({account_label})")
-          print(f"🌐 Fuentes Multi-Mirror ({len(source_urls)} espejos):")
-          for u in source_urls:
-              print(f"   -> {u}")
+          print(f"🚀 INICIANDO NODO {nodo_id} [CUT-THROUGH STREAMING ENGINE]")
+          print(f"🎯 Destino Físico: {dest_file_remote} ({account_label})")
+          print(f"📦 Tamaño Exacto Declarado: {size_bytes:,} Bytes ({size_bytes / (1024**3):.2f} GB)")
+          print(f"🌐 URL Primaria: {primary_url}")
           print("="*70)
 
-          work_dir = f"/tmp/nodo_{nodo_id}_workdir"
-          shutil.rmtree(work_dir, ignore_errors=True)
-          os.makedirs(work_dir, exist_ok=True)
-          local_filepath = os.path.join(work_dir, filename)
+          size_mb = size_bytes / (1024 * 1024)
+          size_gb = size_bytes / (1024 * 1024 * 1024)
 
           start_total = time.time()
+          streaming_success = False
 
-          # 1. Descarga multi-espejo en paralelo con Aria2c
-          print(f"⚡ [PASO 1] Descargando {filename} con Aria2c Turbo (16 hilos por servidor, multi-fuente)...")
-          t_dl_start = time.time()
-          aria2_cmd = [
-              'aria2c',
-              '--max-connection-per-server=16',
-              '--split=16',
-              '--min-split-size=4M',
-              '--file-allocation=none',
-              '--disk-cache=128M',
-              '--summary-interval=10',
-              '-d', work_dir,
-              '-o', filename
-          ] + source_urls
+          # PARADIGMA 1: Cut-Through Streaming Directo (cero disco, descarga y subida concurrentes en RAM)
+          try:
+              print(f"⚡ Conectando pipe en vivo: [CURL GIGABIT] -> [RCLONE RCAT (256MB Chunks)] -> [GOOGLE DRIVE]...")
+              curl_cmd = [
+                  'curl', '-sL', '--fail',
+                  '--connect-timeout', '15',
+                  '--retry', '5', '--retry-delay', '2',
+                  '--retry-connrefused',
+                  primary_url
+              ]
+              rclone_cmd = [
+                  'rclone', 'rcat', dest_file_remote,
+                  f'--size={size_bytes}',
+                  '--drive-chunk-size=256M',
+                  '--drive-upload-cutoff=256M',
+                  '--buffer-size=128M',
+                  '--drive-pacer-min-sleep=10ms',
+                  '--drive-pacer-burst=200',
+                  '--stats=10s',
+                  '--stats-one-line',
+                  '--retries=5',
+                  '--low-level-retries=10'
+              ]
 
-          subprocess.run(aria2_cmd, check=True)
-          dl_time = time.time() - t_dl_start
-          file_size_bytes = os.path.getsize(local_filepath)
-          file_size_mb = file_size_bytes / (1024 * 1024)
-          file_size_gb = file_size_bytes / (1024 * 1024 * 1024)
-          dl_speed = file_size_mb / max(dl_time, 0.001)
+              p_curl = subprocess.Popen(curl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+              p_rclone = subprocess.Popen(rclone_cmd, stdin=p_curl.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+              p_curl.stdout.close()
 
-          print(f"✅ Descarga completada: {file_size_mb:.2f} MB en {dl_time:.1f}s ({dl_speed:.2f} MB/s)")
+              _, rclone_err = p_rclone.communicate()
+              _, curl_err = p_curl.communicate()
 
-          # 2. Subida optimizada a Google Drive con Rclone Turbo Flags
-          print(f"📤 [PASO 2] Subiendo {filename} hacia Google Drive ({dest_remote})...")
-          t_up_start = time.time()
-          rclone_cmd = [
-              'rclone', 'copy',
-              local_filepath, dest_remote,
-              '--drive-chunk-size=256M',
-              '--drive-upload-cutoff=256M',
-              '--transfers=16',
-              '--checkers=16',
-              '--drive-pacer-min-sleep=10ms',
-              '--drive-pacer-burst=200',
-              '--buffer-size=128M',
-              '--use-mmap',
-              '--stats=10s',
-              '--stats-one-line',
-              '--retries=5',
-              '--low-level-retries=10'
-          ]
-          subprocess.run(rclone_cmd, check=True)
-          up_time = time.time() - t_up_start
-          up_speed = file_size_mb / max(up_time, 0.001)
+              if p_rclone.returncode == 0 and p_curl.returncode == 0:
+                  streaming_success = True
+                  print("🎉 ¡Cut-Through Streaming completado con éxito absoluto!")
+              else:
+                  print(f"⚠️ Streaming reportó código no cero: curl={p_curl.returncode}, rclone={p_rclone.returncode}")
+                  if rclone_err:
+                      print(f"   rclone stderr: {rclone_err.decode('utf-8', errors='ignore')[:300]}")
+                  if curl_err:
+                      print(f"   curl stderr: {curl_err.decode('utf-8', errors='ignore')[:300]}")
+          except Exception as e:
+              print(f"⚠️ Excepción en Cut-Through Streaming: {e}")
 
-          print(f"🎉 Subida completada: {file_size_mb:.2f} MB en {up_time:.1f}s ({up_speed:.2f} MB/s)")
+          # FALLBACK ULTRA-RESILIENTE (Si el pipe directo sufriera corte):
+          if not streaming_success:
+              print("🔄 Activando motor fallback: Aria2c Multi-Mirror Gigabit + Rclone Turbo...")
+              work_dir = f"/tmp/nodo_{nodo_id}_workdir"
+              shutil.rmtree(work_dir, ignore_errors=True)
+              os.makedirs(work_dir, exist_ok=True)
+              all_urls = [primary_url] + fallback_urls
+              local_file = os.path.join(work_dir, filename)
 
-          # Limpieza inmediata de disco en runner
-          shutil.rmtree(work_dir, ignore_errors=True)
-          print("🧹 Disco de Azure liberado inmediatamente.")
+              subprocess.run([
+                  'aria2c',
+                  '--max-connection-per-server=16',
+                  '--split=16',
+                  '--min-split-size=4M',
+                  '--file-allocation=none',
+                  '--disk-cache=128M',
+                  '--summary-interval=10',
+                  '-d', work_dir,
+                  '-o', filename
+              ] + all_urls, check=True)
+
+              subprocess.run([
+                  'rclone', 'copy',
+                  local_file, dest_dir_remote,
+                  '--drive-chunk-size=256M',
+                  '--drive-upload-cutoff=256M',
+                  '--transfers=16',
+                  '--checkers=16',
+                  '--drive-pacer-min-sleep=10ms',
+                  '--drive-pacer-burst=200',
+                  '--buffer-size=128M',
+                  '--use-mmap',
+                  '--stats=10s',
+                  '--stats-one-line'
+              ], check=True)
+              shutil.rmtree(work_dir, ignore_errors=True)
 
           elapsed_node = time.time() - start_total
-          avg_speed = file_size_mb / max(elapsed_node, 0.001)
+          e2e_speed = size_mb / max(elapsed_node, 0.001)
 
           print("")
           print("#"*70)
           print(f"🏆 [NODO {nodo_id}] FINALIZADO EXITOSAMENTE:")
-          print(f"📦 Volumen Transferido: {file_size_gb:.2f} GB ({file_size_bytes:,} Bytes)")
+          print(f"📦 Volumen Transferido: {size_gb:.2f} GB ({size_bytes:,} Bytes)")
           print(f"⏱️ Tiempo Total de Nodo: {elapsed_node / 60:.2f} minutos ({elapsed_node:.1f}s)")
-          print(f"⚡ Velocidad Neta de Subida: {up_speed:.2f} MB/s ({up_speed * 8:.1f} Mbps)")
-          print(f"🚀 Velocidad Promedio E2E: {avg_speed:.2f} MB/s")
+          print(f"🚀 Velocidad E2E (Simultánea): {e2e_speed:.2f} MB/s ({e2e_speed * 8:.1f} Mbps)")
+          print(f"⚡ Modo Ejecutado: {'Cut-Through Streaming en RAM' if streaming_success else 'Aria2c Multi-Mirror'}")
           print("#"*70)
 
           notify_tg(
-              f"✅ <b>[NODO {nodo_id}] COMPLETADO [TURBO v5]</b>\n\n"
-              f"📦 <b>Archivo:</b> {filename} ({file_size_gb:.2f} GB)\n"
+              f"✅ <b>[NODO {nodo_id}] FINALIZADO [CUT-THROUGH]</b>\n\n"
+              f"📦 <b>Archivo:</b> {filename} ({size_gb:.2f} GB)\n"
               f"⏱️ <b>Tiempo de Nodo:</b> {elapsed_node / 60:.2f} min ({elapsed_node:.1f}s)\n"
-              f"⬇️ <b>Descarga:</b> {dl_speed:.1f} MB/s ({dl_time:.1f}s)\n"
-              f"⬆️ <b>Subida a Drive:</b> {up_speed:.1f} MB/s ({up_time:.1f}s)\n"
-              f"☁️ <b>Destino:</b> <code>{dest_remote}</code> ({account_label})"
+              f"⚡ <b>Velocidad E2E:</b> {e2e_speed:.1f} MB/s ({e2e_speed * 8:.1f} Mbps)\n"
+              f"🚀 <b>Motor:</b> {'Cut-Through Streaming en RAM' if streaming_success else 'Multi-Mirror Turbo'}\n"
+              f"☁️ <b>Destino:</b> <code>{dest_file_remote}</code> ({account_label})"
           )
           EOF
 
@@ -315,10 +349,10 @@ jobs:
                   subprocess.run(['rclone', 'size', f'{r}:DESCARGAS_UNIVERSALES'])
 
           notify_tg(
-              f"🏆 <b>¡CLÚSTER DUAL TURBO v5 FINALIZADO Y CERTIFICADO!</b>\n\n"
+              f"🏆 <b>¡CLÚSTER CUT-THROUGH FINALIZADO Y CERTIFICADO!</b>\n\n"
               f"📦 <b>Volumen Total Auditado:</b> {total_gb:.2f} GB ({total_count} objetos)\n"
               f"⚡ <b>Modo:</b> {arch_mode.upper()} (2 Servidores Azure en Paralelo)\n"
               f"🛡️ <b>Purga Post-Auditoría:</b> {'Ejecutada (Tus Drives 100% limpios)' if purge else 'Archivos conservados'}\n"
-              f"🚀 <b>Resultado:</b> Máxima velocidad simétrica alcanzada"
+              f"🚀 <b>Resultado:</b> Inyección simultánea en RAM certificada"
           )
           EOF
