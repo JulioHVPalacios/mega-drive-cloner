@@ -777,10 +777,14 @@ async function handleTikTokDownload(botToken, chatId, url) {
 
     const kbd = {
       inline_keyboard: [
-        [{ text: '🔗 Ver / Descargar en HD', url: data.videoUrl }],
+        [{ text: '🔗 Abrir Video HD en Navegador', url: data.videoUrl }],
         [
-          { text: '🚀 Guardar en Google Drive', callback_data: 'd:rot' },
-          { text: '✉️ Compartir por Correo', callback_data: 'share:ask' }
+          { text: '👤 Guardar en Drive Julio (Principal)', callback_data: 'd:jul' },
+          { text: '🤖 Guardar en Drive Vexor (Auxiliar)', callback_data: 'd:vex' }
+        ],
+        [
+          { text: '🔄 Guardar en Rotación 10TB', callback_data: 'd:rot' },
+          { text: '📤 Enviar a Drive Externo / Compartir', callback_data: 'share:ask' }
         ]
       ]
     };
