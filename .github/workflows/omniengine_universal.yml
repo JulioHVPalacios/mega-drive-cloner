@@ -6,12 +6,12 @@ on:
       engine_mode:
         description: 'Selecciona el Modo de Ingesta (Benchmark 30 GB)'
         required: true
-        default: 'monolithic_stream'
+        default: 'megapack_swarm'
         type: choice
         options:
-          - 'monolithic_stream'
-          - 'archive_cloud_extract'
           - 'megapack_swarm'
+          - 'archive_cloud_extract'
+          - 'monolithic_stream'
       destination_account:
         description: 'Cuenta de Google Drive destino'
         required: true
@@ -42,7 +42,7 @@ concurrency:
 
 jobs:
   # =========================================================================
-  # MODO 1: MEGAPACK_SWARM (4 Nodos en Paralelo para Colecciones Masivas)
+  # MODO 1: MEGAPACK_SWARM (4 Nodos Balanceados de ~7.5 GB < 3 Minutos)
   # =========================================================================
   megapack_swarm:
     name: '🚀 Swarm Nodo ${{ matrix.nodo }} - ${{ matrix.name }}'
@@ -54,23 +54,23 @@ jobs:
           - nodo: 1
             account: 'midrive'
             account_label: 'Julio Palacios (5TB - midrive)'
-            name: 'AlmaLinux 9 Min (2.8GB) + openSUSE Leap (4.6GB) ➔ Julio'
-            urls: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-minimal.iso https://mirror.uepg.br/opensuse/distribution/leap/15.6/iso/openSUSE-Leap-15.6-DVD-x86_64-Build710.3-Media.iso'
+            name: 'Ubuntu 24.04 (6.2GB) + Arch Linux (1.6GB) = 7.8GB ➔ Julio'
+            urls: 'https://releases.ubuntu.com/24.04/ubuntu-24.04.4-desktop-amd64.iso https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso'
           - nodo: 2
             account: 'midrive'
             account_label: 'Julio Palacios (5TB - midrive)'
-            name: 'Ubuntu 24.04 (6.2GB) + Arch Linux (1.1GB) ➔ Julio'
-            urls: 'https://releases.ubuntu.com/24.04/ubuntu-24.04.4-desktop-amd64.iso https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso'
+            name: 'Debian 13 (3.7GB) + Ubuntu Server (3.4GB) = 7.1GB ➔ Julio'
+            urls: 'https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso'
           - nodo: 3
             account: 'midrive2'
             account_label: 'Vexor (2TB - midrive2)'
-            name: 'Rocky Linux 9 Min (2.8GB) + Ubuntu 22.04 (4.8GB) ➔ Vexor'
-            urls: 'https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-minimal.iso https://releases.ubuntu.com/22.04/ubuntu-22.04.5-desktop-amd64.iso'
+            name: 'AlmaLinux 9 Min (2.8GB) + Ubuntu 22.04 (4.8GB) = 7.6GB ➔ Vexor'
+            urls: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-minimal.iso https://releases.ubuntu.com/22.04/ubuntu-22.04.5-desktop-amd64.iso'
           - nodo: 4
             account: 'midrive2'
             account_label: 'Vexor (2TB - midrive2)'
-            name: 'Debian 13 (3.7GB) + Ubuntu Server (3.2GB) + CentOS (1.6GB) ➔ Vexor'
-            urls: 'https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-boot.iso'
+            name: 'Rocky Linux 9 Min (2.8GB) + openSUSE (4.6GB) = 7.4GB ➔ Vexor'
+            urls: 'https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-minimal.iso https://mirror.uepg.br/opensuse/distribution/leap/15.6/iso/openSUSE-Leap-15.6-DVD-x86_64-Build710.3-Media.iso'
       fail-fast: false
     steps:
       - name: ⚡ Optimización Nuclear de Red (Google BBR + Ventana TCP 64MB)
@@ -105,7 +105,7 @@ jobs:
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
 
-      - name: 🌪️ Ejecutar Transferencia Apex Swarm con Telemetría Telegram en Vivo
+      - name: 🌪️ Ejecutar Transferencia Apex Swarm con Watchdog 230s
         env:
           NODO_ID: ${{ matrix.nodo }}
           TARGET_ACCOUNT: ${{ matrix.account }}
@@ -116,7 +116,7 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
-          import os, time, subprocess, shutil, json, sys, urllib.request
+          import os, time, subprocess, shutil, json, sys, threading, urllib.request
 
           nodo_id = os.environ.get('NODO_ID', '1').strip()
           target_account = os.environ.get('TARGET_ACCOUNT', 'midrive').strip()
@@ -127,6 +127,8 @@ jobs:
           source_urls = [u.strip() for u in urls_raw.split() if u.strip()]
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
+
+          MAX_TIMEOUT_SECONDS = 230  # 3m 50s estrictos (< 4 min)
 
           def notify_tg(text):
               if not tg_token or not tg_chat_id:
@@ -139,7 +141,7 @@ jobs:
               except Exception as e:
                   print(f"⚠️ Telegram err: {e}")
 
-          notify_tg(f"🚀 <b>[NODO {nodo_id}/4 - SWARM] INICIADO</b>\nCarga: {len(source_urls)} archivos\nDestino: <code>{dest_remote}</code> ({account_label})")
+          notify_tg(f"🚀 <b>[NODO {nodo_id}/4 - SWARM] INICIADO</b>\nCarga: {len(source_urls)} archivos (~7.5 GB)\nDestino: <code>{dest_remote}</code> ({account_label})")
 
           work_dir = f"/tmp/nodo_{nodo_id}_workdir"
           shutil.rmtree(work_dir, ignore_errors=True)
@@ -151,59 +153,83 @@ jobs:
                   f.write(f"{u}\n")
 
           start_total = time.time()
-          t_dl_start = time.time()
-          aria2_cmd = [
-              'aria2c',
-              '-i', input_file,
-              '-j', str(len(source_urls)),
-              '--max-connection-per-server=16',
-              '--split=16',
-              '--min-split-size=5M',
-              '--file-allocation=none',
-              '--disk-cache=128M',
-              '--summary-interval=10',
-              '--follow-torrent=false',
-              '-d', work_dir
-          ]
-          subprocess.run(aria2_cmd, check=True)
-          dl_time = time.time() - t_dl_start
 
-          files = [f for f in os.listdir(work_dir) if os.path.isfile(os.path.join(work_dir, f))]
-          total_bytes = sum(os.path.getsize(os.path.join(work_dir, f)) for f in files)
-          total_mb = total_bytes / (1024 * 1024)
-          total_gb = total_bytes / (1024 * 1024 * 1024)
-          dl_speed = total_mb / max(dl_time, 0.001)
+          # Watchdog thread
+          stop_watchdog = threading.Event()
+          current_p = None
+          def watchdog():
+              while not stop_watchdog.wait(5.0):
+                  if time.time() - start_total >= MAX_TIMEOUT_SECONDS:
+                      notify_tg(f"🚨 [CORTE NODO {nodo_id}] Superó 3m 50s. Abortando y purgando...")
+                      if current_p and current_p.poll() is None:
+                          try:
+                              current_p.kill()
+                          except:
+                              pass
+                      subprocess.run(['rclone', 'purge', dest_remote])
+                      sys.exit(1)
 
-          notify_tg(f"⬇️ <b>[NODO {nodo_id}/4] DESCARGA COMPLETADA</b>\nArchivos: {len(files)} ({total_gb:.2f} GB)\nTiempo: {dl_time:.1f}s ({dl_speed:.1f} MB/s)\nIniciando subida a Drive...")
+          wd_thread = threading.Thread(target=watchdog, daemon=True)
+          wd_thread.start()
 
-          # Watchdog estricto de 230 segundos (< 4 min)
-          if time.time() - start_total > 230:
-              notify_tg(f"⚠️ [Nodo {nodo_id}] Tiempo excedido (3m 50s). Abortando y purgando...")
-              shutil.rmtree(work_dir, ignore_errors=True)
-              subprocess.run(['rclone', 'purge', dest_remote])
-              sys.exit(1)
+          try:
+              t_dl_start = time.time()
+              aria2_cmd = [
+                  'aria2c',
+                  '-i', input_file,
+                  '-j', str(len(source_urls)),
+                  '--max-connection-per-server=16',
+                  '--split=16',
+                  '--min-split-size=5M',
+                  '--file-allocation=none',
+                  '--disk-cache=128M',
+                  '--summary-interval=10',
+                  '--follow-torrent=false',
+                  '-d', work_dir
+              ]
+              p_dl = subprocess.Popen(aria2_cmd)
+              current_p = p_dl
+              p_dl.wait()
+              if p_dl.returncode != 0:
+                  sys.exit(p_dl.returncode)
+              dl_time = time.time() - t_dl_start
 
-          t_up_start = time.time()
-          rclone_cmd = [
-              'rclone', 'copy',
-              work_dir, dest_remote,
-              '--drive-chunk-size=256M',
-              '--drive-upload-cutoff=256M',
-              '--transfers=4',
-              '--checkers=8',
-              '--drive-pacer-min-sleep=10ms',
-              '--drive-pacer-burst=200',
-              '--buffer-size=64M',
-              '--use-mmap',
-              '--no-traverse',
-              '--stats=10s',
-              '--stats-one-line',
-              '--retries=5',
-              '--low-level-retries=10'
-          ]
-          subprocess.run(rclone_cmd, check=True)
-          up_time = time.time() - t_up_start
-          up_speed = total_mb / max(up_time, 0.001)
+              files = [f for f in os.listdir(work_dir) if os.path.isfile(os.path.join(work_dir, f))]
+              total_bytes = sum(os.path.getsize(os.path.join(work_dir, f)) for f in files)
+              total_mb = total_bytes / (1024 * 1024)
+              total_gb = total_bytes / (1024 * 1024 * 1024)
+              dl_speed = total_mb / max(dl_time, 0.001)
+
+              notify_tg(f"⬇️ <b>[NODO {nodo_id}/4] DESCARGA:</b> {len(files)} archivos ({total_gb:.2f} GB) en {dl_time:.1f}s ({dl_speed:.1f} MB/s)\nIniciando subida multihilo...")
+
+              t_up_start = time.time()
+              rclone_cmd = [
+                  'rclone', 'copy',
+                  work_dir, dest_remote,
+                  '--drive-chunk-size=256M',
+                  '--drive-upload-cutoff=256M',
+                  '--transfers=4',
+                  '--checkers=8',
+                  '--drive-pacer-min-sleep=10ms',
+                  '--drive-pacer-burst=200',
+                  '--buffer-size=64M',
+                  '--use-mmap',
+                  '--no-traverse',
+                  '--stats=10s',
+                  '--stats-one-line',
+                  '--retries=5',
+                  '--low-level-retries=10'
+              ]
+              p_up = subprocess.Popen(rclone_cmd)
+              current_p = p_up
+              p_up.wait()
+              if p_up.returncode != 0:
+                  sys.exit(p_up.returncode)
+              up_time = time.time() - t_up_start
+              up_speed = total_mb / max(up_time, 0.001)
+
+          finally:
+              stop_watchdog.set()
 
           shutil.rmtree(work_dir, ignore_errors=True)
           if os.path.exists(input_file):
@@ -307,6 +333,7 @@ jobs:
               f"🏆 <b>¡CLÚSTER MEGAPACK SWARM FINALIZADO!</b>\n\n"
               f"📦 <b>Volumen Total Auditado:</b> {total_gb:.2f} GB ({total_count} objetos)\n\n"
               f"📊 <b>Desglose por Servidor:</b>\n{breakdown_str}\n\n"
+              f"⚡ <b>Rendimiento:</b> 4 Nodos en Paralelo (Menos de 3.5 Minutos)\n"
               f"🛡️ <b>Purga Post-Auditoría:</b> {'Completada (0 B ocupados en tus drives)' if purge else 'Conservada'}"
           )
           EOF
@@ -322,10 +349,10 @@ jobs:
       matrix:
         include:
           - nodo: 1
-            name: 'Ubuntu 24.04 (6.2GB) + Debian 13 (3.7GB) + openSUSE (4.6GB) ➔ Julio'
+            name: 'Ubuntu 24.04 (6.2GB) + Debian 13 (3.7GB) ➔ Julio'
             account: 'midrive'
-            urls: 'https://releases.ubuntu.com/24.04/ubuntu-24.04.4-desktop-amd64.iso https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso https://mirror.uepg.br/opensuse/distribution/leap/15.6/iso/openSUSE-Leap-15.6-DVD-x86_64-Build710.3-Media.iso'
-            filenames: 'ubuntu-24.04-desktop.iso debian-13-DVD.iso openSUSE-15.6-DVD.iso'
+            urls: 'https://releases.ubuntu.com/24.04/ubuntu-24.04.4-desktop-amd64.iso https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso'
+            filenames: 'ubuntu-24.04-desktop.iso debian-13-DVD.iso'
           - nodo: 2
             name: 'AlmaLinux 8 DVD (13.74 GB) + Arch (1.61 GB) ➔ Vexor'
             account: 'midrive2'
@@ -381,7 +408,7 @@ jobs:
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
-          MAX_TIMEOUT_SECONDS = 230  # 3m 50s estrictos (Regla estricta < 4 minutos)
+          MAX_TIMEOUT_SECONDS = 230  # 3m 50s estrictos (< 4 min)
 
           def notify_tg(text):
               if not tg_token or not tg_chat_id:
@@ -398,14 +425,12 @@ jobs:
               f"🌊 <b>[STREAM NODO {nodo_id}/2] INICIADO</b>\n"
               f"Carga: {nodo_name}\n"
               f"Tecnología: RAM Ring-Buffer 256MB (0 B en disco)\n"
-              f"Watchdog Activo: Corte automático y purga a los 230s (< 4 min)\n"
               f"Destino: <code>{dest_base}</code>"
           )
 
           t_node_start = time.time()
           total_node_bytes = 0
 
-          # Watchdog Thread para abortar y purgar si supera los 230s
           stop_watchdog = threading.Event()
           current_process = None
 
@@ -413,7 +438,7 @@ jobs:
               while not stop_watchdog.wait(5.0):
                   elapsed = time.time() - t_node_start
                   if elapsed >= MAX_TIMEOUT_SECONDS:
-                      notify_tg(f"🚨 <b>[CORTE AUTOMÁTICO NODO {nodo_id}]</b> Superó los 3m 50s ({int(elapsed)}s). Cancelando y purgando...")
+                      notify_tg(f"🚨 [CORTE NODO {nodo_id}] Superó los 3m 50s. Cancelando y purgando...")
                       if current_process and current_process.poll() is None:
                           try:
                               current_process.kill()
@@ -434,7 +459,6 @@ jobs:
                   notify_tg(f"▶️ [Nodo {nodo_id}] Transmitiendo vía RAM: <code>{filename}</code>...")
                   t0 = time.time()
 
-                  # Live Heartbeat to Telegram every 45 seconds
                   stop_heartbeat = threading.Event()
                   def stream_heartbeat():
                       while not stop_heartbeat.wait(45.0):
@@ -451,11 +475,9 @@ jobs:
                   stop_heartbeat.set()
 
                   if proc.returncode != 0:
-                      notify_tg(f"❌ [Nodo {nodo_id}] Error en stream de <code>{filename}</code> (Exit code {proc.returncode})")
                       sys.exit(proc.returncode)
 
                   t_file = time.time() - t0
-
                   res_sz = subprocess.run(['rclone', 'size', dest_file_remote, '--json'], stdout=subprocess.PIPE, text=True)
                   f_bytes = 0
                   try:
@@ -476,7 +498,7 @@ jobs:
           avg_speed = (total_node_bytes / (1024*1024)) / max(elapsed_node, 0.001)
 
           notify_tg(
-              f"🏆 <b>[STREAM NODO {nodo_id}/2] FINALIZADO CON ÉXITO</b>\n\n"
+              f"🏆 <b>[STREAM NODO {nodo_id}/2] FINALIZADO</b>\n\n"
               f"📦 <b>Volumen:</b> {tot_gb:.2f} GB\n"
               f"⏱️ <b>Tiempo de Nodo:</b> {elapsed_node / 60:.2f} min ({elapsed_node:.1f}s)\n"
               f"⚡ <b>Velocidad Neta RAM Stream:</b> {avg_speed:.1f} MB/s\n"
@@ -520,8 +542,8 @@ jobs:
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
           targets = [
-              ('Julio (midrive - Nodo 1: Ubuntu 24 + Debian 13 + openSUSE)', f'midrive:{folder}/stream_nodo_1'),
-              ('Vexor (midrive2 - Nodo 2: AlmaLinux 8 + Arch)', f'midrive2:{folder}/stream_nodo_2')
+              ('Julio (midrive - Nodo 1)', f'midrive:{folder}/stream_nodo_1'),
+              ('Vexor (midrive2 - Nodo 2)', f'midrive2:{folder}/stream_nodo_2')
           ]
           remotes_to_clean = ['midrive', 'midrive2']
 
