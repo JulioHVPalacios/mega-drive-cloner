@@ -14,6 +14,7 @@ on:
           - 'archive_cloud_extract'
           - 'monolithic_stream'
           - 'quick_share_drive_folder'
+          - 'single_iso_30gb'
       destination_account:
         description: 'Cuenta de Google Drive destino / origen'
         required: true
@@ -1143,4 +1144,220 @@ jobs:
           else:
               notify_tg(f"❌ <b>Error al compartir carpeta:</b> No se pudo compartir <code>{folder}</code> con <code>{email}</code>.")
               sys.exit(1)
+          EOF
+
+  # =========================================================================
+  # MODO 5: PRUEBA EXTREMA: ARCHIVO ÚNICO ISO DE 30 GB (< 4 MINUTOS)
+  # =========================================================================
+  single_iso_30gb:
+    name: '💿 ISO 30 GB Monolítica (< 4 min) ➔ ${{ inputs.destination_account }}'
+    if: inputs.engine_mode == 'single_iso_30gb'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Clonar Repositorio
+        uses: actions/checkout@v4
+
+      - name: ⚡ Optimización Nuclear de Red (Google BBR + Ventana TCP 64MB)
+        run: |
+          sudo modprobe tcp_bbr || true
+          sudo sysctl -w net.ipv4.tcp_congestion_control=bbr || true
+          sudo sysctl -w net.core.rmem_max=67108864
+          sudo sysctl -w net.core.wmem_max=67108864
+          sudo sysctl -w net.ipv4.tcp_rmem="4096 87380 67108864"
+          sudo sysctl -w net.ipv4.tcp_wmem="4096 65536 67108864"
+          sudo sysctl -w net.ipv4.tcp_window_scaling=1
+
+      - name: 🧹 Limpieza Profunda de Disco Azure (~75 GB Libres)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/share/powershell /usr/share/swift /usr/lib/jvm
+          sudo docker system prune -af --volumes || true
+          df -h
+
+      - name: ⚡ Instalar Rclone Binario
+        run: |
+          curl -fsSL https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone.zip
+          sudo unzip -q -j /tmp/rclone.zip '*/rclone' -d /usr/local/bin/
+          rm -f /tmp/rclone.zip
+          rclone version
+
+      - name: 🔐 Inyectar Credenciales de Rclone
+        env:
+          RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
+
+      - name: 🌪️ Generar ISO 30 GB y Transferir a Drive con Watchdog 230s
+        env:
+          DEST_ACC_INPUT: ${{ inputs.destination_account }}
+          DEST_FOLDER: ${{ inputs.destination_folder }}
+          RECIPIENT_EMAIL: ${{ inputs.recipient_email }}
+          SHARE_ROLE: ${{ inputs.share_role }}
+          PURGE_AFTER: ${{ inputs.purge_after_test }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
+          import os, sys, time, struct, subprocess, threading, json, urllib.request, shutil
+          import share_drive_folder
+
+          dest_acc_input = os.environ.get('DEST_ACC_INPUT', 'midrive').strip()
+          target_account = 'midrive2' if dest_acc_input == 'midrive2' else 'midrive'
+          folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/TEST_ISO_30GB').strip()
+          recipient_email = os.environ.get('RECIPIENT_EMAIL', '').strip()
+          share_role = os.environ.get('SHARE_ROLE', 'reader').strip()
+          purge = os.environ.get('PURGE_AFTER', 'true').lower() == 'true'
+          tg_token = os.environ.get('TG_TOKEN', '').strip()
+          tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
+
+          dest_remote = f"{target_account}:{folder}"
+          iso_filename = "MEGAPACK_TOOLS_SOFTWARE_30GB.iso"
+          dest_file_path = f"{dest_remote}/{iso_filename}"
+
+          MAX_TIMEOUT_SECONDS = 230  # 3m 50s estrictos (< 4 min)
+
+          def notify_tg(text):
+              if not tg_token or not tg_chat_id:
+                  return
+              for _ in range(3):
+                  try:
+                      url = f"https://api.telegram.org/bot{tg_token}/sendMessage"
+                      data = json.dumps({"chat_id": tg_chat_id, "text": text, "parse_mode": "HTML"}).encode('utf-8')
+                      req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+                      urllib.request.urlopen(req, timeout=10)
+                      break
+                  except Exception:
+                      time.sleep(1)
+
+          notify_tg(f"💿 <b>[INICIO PRUEBA ISO 30 GB ÚNICA]</b>\n📁 Destino: <code>{dest_remote}</code>\n⏱️ Límite: <b>Menos de 4 Minutos</b> (Watchdog a 230s)")
+
+          # 1. Determinar el disco con mayor espacio (/mnt o /tmp)
+          mnt_free = shutil.disk_usage('/mnt').free if os.path.exists('/mnt') else 0
+          tmp_free = shutil.disk_usage('/tmp').free if os.path.exists('/tmp') else 0
+          work_dir = '/mnt/iso_work' if mnt_free > tmp_free else '/tmp/iso_work'
+          os.makedirs(work_dir, exist_ok=True)
+          local_iso = os.path.join(work_dir, iso_filename)
+
+          print(f"Directorio de trabajo: {work_dir} (Libre: {max(mnt_free, tmp_free)/(1024**3):.1f} GB)")
+
+          # 2. Generar Archivo ISO de 30 GB exactos con estructura ECMA-119 / ISO 9660
+          t_gen_start = time.time()
+          target_bytes = 30 * 1024 * 1024 * 1024  # 32,212,254,720 Bytes (30.00 GB exactos)
+
+          print("Asignando 30.00 GB en disco NVMe...")
+          subprocess.run(['fallocate', '-l', str(target_bytes), local_iso], check=True)
+
+          print("Escribiendo Primary Volume Descriptor ISO 9660...")
+          sector_size = 2048
+          volume_sectors = target_bytes // sector_size
+
+          # Inyectar estructura de disco válida
+          with open(local_iso, 'r+b') as f:
+              f.seek(0)
+              f.write(b'\x00' * 32768)  # Sector 0-15: System Area
+              
+              # Sector 16: Primary Volume Descriptor
+              pvd = bytearray(sector_size)
+              pvd[0] = 0x01
+              pvd[1:6] = b'CD001'
+              pvd[6] = 0x01
+              pvd[8:40] = b'OMNICLOUD_AZURE_BUILDER'.ljust(32, b' ')
+              pvd[40:72] = b'MEGAPACK_TOOLS_SOFTWARE_30GB'.ljust(32, b' ')
+              pvd[80:84] = struct.pack('<I', volume_sectors)
+              pvd[84:88] = struct.pack('>I', volume_sectors)
+              pvd[128:130] = struct.pack('<H', 2048)
+              pvd[130:132] = struct.pack('>H', 2048)
+              f.write(pvd)
+
+              # Sector 17: Terminator
+              term = bytearray(sector_size)
+              term[0] = 0xFF
+              term[1:6] = b'CD001'
+              term[6] = 0x01
+              f.write(term)
+
+          gen_time = time.time() - t_gen_start
+          iso_size = os.path.getsize(local_iso)
+          print(f"ISO creada: {local_iso} -> {iso_size:,} Bytes ({iso_size/(1024**3):.2f} GB) en {gen_time:.3f}s")
+
+          # 3. Watchdog guardián de 230 segundos (< 4 min)
+          start_transfer = time.time()
+          stop_watchdog = threading.Event()
+          current_p = None
+
+          def watchdog():
+              while not stop_watchdog.wait(5.0):
+                  elapsed = time.time() - start_transfer
+                  if elapsed >= MAX_TIMEOUT_SECONDS:
+                      notify_tg(f"🚨 <b>[CORTE WATCHDOG]</b> La subida de la ISO de 30 GB superó 3m 50s. Abortando...")
+                      if current_p and current_p.poll() is None:
+                          try:
+                              current_p.kill()
+                          except Exception:
+                              pass
+                      subprocess.run(['rclone', 'deletefile', dest_file_path])
+                      sys.exit(247)
+
+          wd_thread = threading.Thread(target=watchdog, daemon=True)
+          wd_thread.start()
+
+          # 4. Transferencia Apex con Rclone Turbo (Chunk Size 512M + Buffer RAM 256M)
+          cmd_rclone = [
+              'rclone', 'copyto', local_iso, dest_file_path,
+              '--drive-chunk-size=512M',
+              '--buffer-size=256M',
+              '--drive-upload-cutoff=1000G',
+              '--drive-use-trash=false',
+              '--transfers=1',
+              '--checkers=1',
+              '--stats=5s',
+              '--stats-one-line',
+              '-v'
+          ]
+          print(f"Iniciando subida de la ISO de 30 GB a {dest_file_path}...")
+          current_p = subprocess.Popen(cmd_rclone)
+          current_p.wait()
+
+          stop_watchdog.set()
+          transfer_time = time.time() - start_transfer
+
+          if current_p.returncode != 0:
+              notify_tg(f"❌ <b>Error en la subida de la ISO</b> (Código {current_p.returncode})")
+              sys.exit(current_p.returncode)
+
+          up_speed_mb = (iso_size / (1024 * 1024)) / transfer_time
+          up_speed_gbps = (up_speed_mb * 8) / 1024
+
+          print("=" * 60)
+          print(f"🏁 TRANSFERENCIA DE ISO 30 GB FINALIZADA:")
+          print(f"   - Archivo: {iso_filename}")
+          print(f"   - Tamaño: {iso_size:,} Bytes ({iso_size/(1024**3):.2f} GB)")
+          print(f"   - Tiempo Subida: {transfer_time:.2f}s ({transfer_time/60:.2f} min)")
+          print(f"   - Velocidad Media: {up_speed_mb:.2f} MB/s ({up_speed_gbps:.2f} Gbps)")
+          print("=" * 60)
+
+          tg_msg = (
+              "🏆 <b>[PRUEBA ISO 30 GB MONOLÍTICA COMPLETADA]</b>\n\n"
+              f"💿 <b>Archivo:</b> <code>{iso_filename}</code>\n"
+              f"📊 <b>Tamaño Certificado:</b> 30.00 GB ({iso_size:,} Bytes)\n"
+              f"⏱️ <b>Tiempo de Subida:</b> <b>{transfer_time:.2f}s ({transfer_time/60:.2f} min)</b>\n"
+              f"🚀 <b>Velocidad Registrada:</b> <b>{up_speed_mb:.2f} MB/s ({up_speed_gbps:.2f} Gbps)</b>\n"
+              f"☁️ <b>Destino:</b> <code>{target_account}:{folder}</code>\n"
+              f"🏁 <b>Resultado:</b> {'✅ MENOS DE 4 MINUTOS' if transfer_time < 240 else '⚠️ LÍMITE ALCANZADO'}"
+          )
+
+          # 5. Compartir con tercero si se especificó email
+          if recipient_email and not purge:
+              ok_share, share_link = share_drive_folder.share_folder(folder, recipient_email, role=share_role, remote=target_account, send_notification=True)
+              if ok_share:
+                  tg_msg += f"\n\n🤝 <b>Compartido con:</b> <code>{recipient_email}</code>\n🔗 <a href='{share_link}'>Abrir ISO en Drive</a>"
+
+          # 6. Purga si purge_after_test está activado
+          if purge:
+              print("Limpiando archivo de prueba en Drive...")
+              subprocess.run(['rclone', 'deletefile', dest_file_path])
+              tg_msg += "\n\n🧹 <b>Purga Post-Test:</b> 100% Completada (0 Bytes consumidos)"
+
+          notify_tg(tg_msg)
+          os.remove(local_iso)
           EOF
