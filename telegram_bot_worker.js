@@ -300,12 +300,12 @@ export default {
           // Fila 1: Opción de Visualizar / Reproducir
           if (isTikTok) {
             buttons.push([
-              { text: '👁️ Ver / Descargar aquí en Telegram (Sin Marca)', callback_data: `view:tk:${encodeURIComponent(rawUrl)}` }
+              { text: '👁️ Ver / Descargar en Telegram (Sin Marca)', callback_data: 'view:tg' }
             ]);
           } else if (isYouTube) {
             buttons.push([
               { text: '👁️ Ver / Reproducir en Telegram', url: rawUrl },
-              { text: '📝 Resumen Ejecutivo IA', callback_data: `resumir:${encodeURIComponent(rawUrl.slice(0, 200))}` }
+              { text: '📝 Resumen Ejecutivo IA', callback_data: 'resumir:last' }
             ]);
           } else {
             buttons.push([
@@ -315,17 +315,17 @@ export default {
 
           // Fila 2: Guardar en Google Drive (Elegir Unidad)
           buttons.push([
-            { text: '🚀 Guardar en Google Drive (Rotación 10TB)', callback_data: `d:rot:${encodeURIComponent(rawUrl)}` }
+            { text: '🚀 Guardar en Google Drive (Rotación 10TB)', callback_data: 'd:rot' }
           ]);
           buttons.push([
-            { text: '👤 Drive Principal (Julio)', callback_data: `d:jul:${encodeURIComponent(rawUrl)}` },
-            { text: '🤖 Drive Auxiliar (Vexor)', callback_data: `d:vex:${encodeURIComponent(rawUrl)}` }
+            { text: '👤 Drive Principal (Julio)', callback_data: 'd:jul' },
+            { text: '🤖 Drive Auxiliar (Vexor)', callback_data: 'd:vex' }
           ]);
 
           // Fila 3: Otras Nubes y Swarm
           const cloudRow = [
-            { text: '☁️ OneDrive', callback_data: `d:one:${encodeURIComponent(rawUrl)}` },
-            { text: '🔴 MEGA.nz', callback_data: `d:meg:${encodeURIComponent(rawUrl)}` }
+            { text: '☁️ OneDrive', callback_data: 'd:one' },
+            { text: '🔴 MEGA.nz', callback_data: 'd:meg' }
           ];
           if (isBig) {
             cloudRow.unshift({ text: '⚡ Swarm (30GB)', callback_data: 'd:swarm' });
@@ -340,7 +340,7 @@ export default {
           // Fila 5: Resumir con IA (si no es YouTube)
           if (!isYouTube) {
             buttons.push([
-              { text: '🌐 Resumir Contenido con IA', callback_data: `resumir:${encodeURIComponent(rawUrl.slice(0, 200))}` }
+              { text: '🌐 Resumir Contenido con IA', callback_data: 'resumir:last' }
             ]);
           }
 
@@ -427,9 +427,32 @@ export default {
           await handleMonitorList(botToken, chatId, env);
         } else if (data === 'devops:cancel') {
           await cancelRunningWorkflows(botToken, chatId, repo, pat);
-        } else if (data.startsWith('resumir:')) {
-          const rawUrl = decodeURIComponent(data.replace('resumir:', ''));
-          await handleSummarizeUrl(botToken, chatId, rawUrl, geminiKey, serperKey);
+        } else if (data === 'resumir:last' || data.startsWith('resumir:')) {
+          let rawUrl = '';
+          if (data.startsWith('resumir:') && data !== 'resumir:last') {
+            rawUrl = decodeURIComponent(data.replace('resumir:', ''));
+          }
+          if (!rawUrl) {
+            const origText = cq.message.text || cq.message.caption || '';
+            const match = origText.match(/(https?:\/\/[^\s]+|magnet:\?xt=[^\s]+)/i);
+            rawUrl = match ? match[0].trim() : '';
+          }
+          if (!rawUrl && cq.message.reply_markup?.inline_keyboard) {
+            for (const row of cq.message.reply_markup.inline_keyboard) {
+              for (const btn of row) {
+                if (btn.url && (btn.url.startsWith('http://') || btn.url.startsWith('https://'))) {
+                  rawUrl = btn.url;
+                  break;
+                }
+              }
+              if (rawUrl) break;
+            }
+          }
+          if (rawUrl) {
+            await handleSummarizeUrl(botToken, chatId, rawUrl, geminiKey, serperKey);
+          } else {
+            await sendTG(botToken, chatId, '⚠️ No se encontró la URL para resumir.');
+          }
         } else if (data === 'd:folders') {
           await handleListFolders(botToken, chatId, env);
         } else if (data === 'p:def') {
@@ -445,9 +468,38 @@ export default {
         } else if (data.startsWith('ai:faq:')) {
           const topic = data.split('ai:faq:')[1];
           await sendTG(botToken, chatId, getFaqAnswer(topic));
-        } else if (data.startsWith('view:tk:')) {
-          const rawUrl = decodeURIComponent(data.slice('view:tk:'.length));
-          await handleTikTokDownload(botToken, chatId, rawUrl);
+        } else if (data === 'view:tg' || data.startsWith('view:tk:')) {
+          let rawUrl = '';
+          if (data.startsWith('view:tk:') && data !== 'view:tk:') {
+            rawUrl = decodeURIComponent(data.slice('view:tk:'.length));
+          }
+          if (!rawUrl) {
+            const origText = cq.message.text || cq.message.caption || '';
+            const match = origText.match(/(https?:\/\/[^\s]+|magnet:\?xt=[^\s]+)/i);
+            rawUrl = match ? match[0].trim() : '';
+          }
+          if (!rawUrl && cq.message.reply_markup?.inline_keyboard) {
+            for (const row of cq.message.reply_markup.inline_keyboard) {
+              for (const btn of row) {
+                if (btn.url && (btn.url.startsWith('http://') || btn.url.startsWith('https://'))) {
+                  rawUrl = btn.url;
+                  break;
+                }
+              }
+              if (rawUrl) break;
+            }
+          }
+          if (rawUrl) {
+            if (/tiktok\.com/i.test(rawUrl)) {
+              await handleTikTokDownload(botToken, chatId, rawUrl);
+            } else if (/youtube\.com|youtu\.be/i.test(rawUrl)) {
+              await handleSummarizeUrl(botToken, chatId, rawUrl, geminiKey, serperKey);
+            } else {
+              await sendTG(botToken, chatId, `🔗 <b>Enlace:</b> ${escapeHtml(rawUrl)}`);
+            }
+          } else {
+            await sendTG(botToken, chatId, '⚠️ No se encontró el enlace a visualizar.');
+          }
         } else if (data === 'share:ask') {
           const sharePrompt = '✉️ <b>COMPARTIR ACCESO DE GOOGLE DRIVE POR CORREO</b>\n\n' +
             'Puedes otorgar acceso oficial a tus carpetas a cualquier persona <b>solo con su correo Gmail</b>.\n\n' +
@@ -463,10 +515,10 @@ export default {
           await sendTG(botToken, chatId, sharePrompt, kbd);
         } else if (data.startsWith('d:')) {
           let target = 'Google Drive (Rotación Inteligente: Julio + Vexor 10TB)';
-          if (data.startsWith('d:jul')) target = 'Google Drive (Mi Unidad Principal - Julio)';
-          if (data.startsWith('d:vex')) target = 'Google Drive (Unidad Auxiliar - Vexor)';
-          if (data.startsWith('d:one')) target = 'Microsoft OneDrive (Aviso: Throttling 429)';
-          if (data.startsWith('d:meg')) target = 'MEGA.nz';
+          if (data === 'd:jul' || data.startsWith('d:jul:')) target = 'Google Drive (Mi Unidad Principal - Julio)';
+          if (data === 'd:vex' || data.startsWith('d:vex:')) target = 'Google Drive (Unidad Auxiliar - Vexor)';
+          if (data === 'd:one' || data.startsWith('d:one:')) target = 'Microsoft OneDrive (Aviso: Throttling 429)';
+          if (data === 'd:meg' || data.startsWith('d:meg:')) target = 'MEGA.nz';
 
           let fullUrl = '';
           const parts = data.split(':');
@@ -474,9 +526,20 @@ export default {
             fullUrl = decodeURIComponent(parts.slice(2).join(':'));
           }
           if (!fullUrl) {
-            const origText = cq.message.text || '';
-            const match = origText.match(/ENLACE (?:MULTIMEDIA )?DETECTADO:[\s\S]*?(https?:\/\/[^\s]+|magnet:\?xt=[^\s]+)/i) || origText.match(/Enlace Detectado:\s*([\s\S]+?)(?:\n\n🎯|$)/i) || origText.match(/https?:\/\/[^\s]+/i);
-            fullUrl = match ? (match[1] || match[0]).trim() : '';
+            const origText = cq.message.text || cq.message.caption || '';
+            const match = origText.match(/(https?:\/\/[^\s]+|magnet:\?xt=[^\s]+)/i);
+            fullUrl = match ? match[0].trim() : '';
+          }
+          if (!fullUrl && cq.message.reply_markup?.inline_keyboard) {
+            for (const row of cq.message.reply_markup.inline_keyboard) {
+              for (const btn of row) {
+                if (btn.url && (btn.url.startsWith('http://') || btn.url.startsWith('https://'))) {
+                  fullUrl = btn.url;
+                  break;
+                }
+              }
+              if (fullUrl) break;
+            }
           }
 
           if (data === 'd:swarm') {
@@ -695,7 +758,7 @@ async function handleTikTokDownload(botToken, chatId, url) {
       inline_keyboard: [
         [{ text: '🔗 Ver / Descargar en HD', url: data.videoUrl }],
         [
-          { text: '🚀 Guardar en Google Drive', callback_data: `d:rot:${encodeURIComponent(data.videoUrl)}` },
+          { text: '🚀 Guardar en Google Drive', callback_data: 'd:rot' },
           { text: '✉️ Compartir por Correo', callback_data: 'share:ask' }
         ]
       ]
@@ -1625,7 +1688,7 @@ async function sendSingleTG(token, chatId, text, keyboard = null) {
   };
   body.reply_markup = keyboard || MAIN_KEYBOARD;
 
-  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+  let res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -1637,10 +1700,24 @@ async function sendSingleTG(token, chatId, text, keyboard = null) {
       text: text.replace(/<[^>]+>/g, ''),
       reply_markup: keyboard || MAIN_KEYBOARD
     };
-    return fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(plainBody)
+    });
+  }
+
+  if (!res.ok) {
+    // Si aún falla (por ejemplo, BUTTON_DATA_INVALID o teclado roto), enviar garantizado con MAIN_KEYBOARD
+    const safeBody = {
+      chat_id: chatId,
+      text: text.replace(/<[^>]+>/g, ''),
+      reply_markup: MAIN_KEYBOARD
+    };
+    res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(safeBody)
     });
   }
   return res;
