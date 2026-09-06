@@ -40,8 +40,10 @@ DIRECTIVAS ABSOLUTAS:
 6. Mantén respuestas bien estructuradas, didácticas, claras y de alto impacto técnico.
 7. VISIÓN MULTIMODAL, OCR Y RESÚMENES: Cuentas con visión multimodal para auditar fotos de código con errores, extraer texto de documentos/capturas (OCR), procesar PDFs y generar resúmenes ejecutivos de enlaces web.`;
 
-const DEFAULT_FOLDER_ID = '1wcXC2SQ9sYcTeznw2-tbU0fD820ojdHd';
-const DEFAULT_FOLDER_NAME = 'MEGAPACK_PROGRAMACION_COMPLETO';
+const DEFAULT_FOLDER_ID = '1ex79zQc9G4ZfdzS_jXMIDEZRHf9pBzHc'; // DESCARGAS_UNIVERSALES (Protege tu Megapack)
+const DEFAULT_FOLDER_NAME = 'DESCARGAS_UNIVERSALES';
+const MEGAPACK_FOLDER_ID = '1wcXC2SQ9sYcTeznw2-tbU0fD820ojdHd';
+const MEGAPACK_FOLDER_NAME = 'MEGAPACK_PROGRAMACION_COMPLETO';
 
 export default {
   async fetch(request, env, ctx) {
@@ -153,21 +155,27 @@ export default {
         const emailMatch = text.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/);
         if (text === '🤝 Compartir Carpeta' || norm === '/compartir' || norm.startsWith('/compartir') || norm.startsWith('compartir') || (emailMatch && !text.includes('http') && text.trim().split(/\s+/).length <= 2)) {
           const email = emailMatch ? emailMatch[0] : null;
+          const isMegapack = norm.includes('megapack');
+          const targetFolderId = isMegapack ? MEGAPACK_FOLDER_ID : DEFAULT_FOLDER_ID;
+          const targetFolderName = isMegapack ? MEGAPACK_FOLDER_NAME : DEFAULT_FOLDER_NAME;
+
           if (email) {
-            await handleShareFolder(botToken, chatId, env, email.trim(), DEFAULT_FOLDER_ID, DEFAULT_FOLDER_NAME);
+            await handleShareFolder(botToken, chatId, env, email.trim(), targetFolderId, targetFolderName);
             return new Response('OK', { status: 200 });
           } else {
-            const sharePrompt = '🤝 <b>COMPARTIR CARPETAS DE GOOGLE DRIVE AL INSTANTE</b>\n\n' +
-              'Comparte con cualquier amigo o cliente <b>solo con su correo Gmail</b>.\n' +
-              '• No necesitan Rclone ni contraseñas.\n' +
-              '• Les aparece en 1.5 segundos en <b>Compartido conmigo</b>.\n' +
-              '• Consumo de cuota cero para ellos.\n\n' +
-              '👉 <b>Para compartir ahora mismo, escribe:</b>\n' +
+            const sharePrompt = '🤝 <b>COMPARTIR ACCESO DE GOOGLE DRIVE POR CORREO</b>\n\n' +
+              'Otorga acceso oficial a tus descargas <b>solo con el correo Gmail</b> de tu amigo o cliente.\n' +
+              '• Se comparte <b>únicamente la carpeta de descargas</b> (<code>DESCARGAS_UNIVERSALES</code>).\n' +
+              '• Tu <b>Megapack privado está 100% protegido</b> y no se comparte con extraños.\n' +
+              '• A tu amigo le aparece en 1.5 segundos en <b>Compartido conmigo</b> sin gastar su almacenamiento.\n\n' +
+              '👉 <b>Para compartir tus descargas, escribe:</b>\n' +
               '<code>/compartir amigo@gmail.com</code>\n\n' +
-              '<i>O simplemente escribe su correo en el chat y OmniCloud le otorgará acceso oficial de inmediato.</i>';
+              '📦 <i>Para compartir el Megapack de Programación Completo (solo cuando tú lo decidas), escribe:</i>\n' +
+              '<code>/compartir megapack amigo@gmail.com</code>';
             const kbd = {
               inline_keyboard: [
-                [{ text: '👥 Ver Quiénes Tienen Acceso', callback_data: 'p:def' }],
+                [{ text: '👥 Ver Permisos en DESCARGAS_UNIVERSALES', callback_data: 'p:def' }],
+                [{ text: '📦 Ver Permisos en MEGAPACK', callback_data: `p:${MEGAPACK_FOLDER_ID}` }],
                 [{ text: '📁 Ver Todas Mis Carpetas', callback_data: 'd:folders' }]
               ]
             };
@@ -176,7 +184,7 @@ export default {
           }
         }
 
-// 3.7 Revocar Permiso en Google Drive
+        // 3.7 Revocar Permiso en Google Drive
         if (norm.startsWith('/revocar') || norm.startsWith('/quitar') || norm.startsWith('revocar')) {
           const parts = text.split(/\s+/);
           const target = parts.find((p, idx) => idx > 0 && p.length > 3);
@@ -501,14 +509,17 @@ export default {
             await sendTG(botToken, chatId, '⚠️ No se encontró el enlace a visualizar.');
           }
         } else if (data === 'share:ask') {
-          const sharePrompt = '✉️ <b>COMPARTIR ACCESO DE GOOGLE DRIVE POR CORREO</b>\n\n' +
-            'Puedes otorgar acceso oficial a tus carpetas a cualquier persona <b>solo con su correo Gmail</b>.\n\n' +
-            '👉 <b>Para compartir ahora, escribe en este chat:</b>\n' +
+          const sharePrompt = '✉️ <b>COMPARTIR DESCARGAS POR CORREO GMAIL</b>\n\n' +
+            'Puedes otorgar acceso oficial a tus descargas a cualquier persona <b>solo con su correo Gmail</b>.\n\n' +
+            '• Se compartirá <b>únicamente la carpeta <code>DESCARGAS_UNIVERSALES</code></b>.\n' +
+            '• Tu <b>Megapack privado está 100% protegido</b> y nadie más tendrá acceso.\n' +
+            '• Aparecerá en 1.5s en su sección <i>Compartido conmigo</i> sin gastar su almacenamiento.\n\n' +
+            '👉 <b>Para compartir tus descargas ahora, escribe:</b>\n' +
             '<code>/compartir amigo@gmail.com</code>\n\n' +
-            '<i>O simplemente escribe el correo directamente (ej: <code>amigo@gmail.com</code>) y OmniCloud lo vinculará al instante.</i>';
+            '<i>O simplemente escribe el correo directamente (ej: <code>amigo@gmail.com</code>).</i>';
           const kbd = {
             inline_keyboard: [
-              [{ text: '👥 Ver Permisos Actuales', callback_data: 'p:def' }],
+              [{ text: '👥 Ver Permisos en DESCARGAS_UNIVERSALES', callback_data: 'p:def' }],
               [{ text: '📁 Ver Todas Mis Carpetas', callback_data: 'd:folders' }]
             ]
           };
@@ -683,7 +694,37 @@ async function handleDocumentMessage(botToken, chatId, msg, geminiKey) {
 async function getTikTokData(url) {
   const cleanUrl = url.split('?')[0].split('&')[0].trim();
 
-  // Proveedor 1: SSSTik (Extracción directa a CDN de alta velocidad, no bloqueado por Cloudflare)
+  // Proveedor 1: TikWM Ultra HD 1080p (hd=1 -> Stream HEVC 1080x1920 nativo a 60fps con audio estéreo)
+  const tikwmEndpoints = ['https://www.tikwm.com/api/', 'https://tikwm.com/api/'];
+  for (const ep of tikwmEndpoints) {
+    try {
+      const res = await fetch(ep, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*'
+        },
+        body: `url=${encodeURIComponent(cleanUrl)}&hd=1`
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.code === 0 && data.data && (data.data.hdplay || data.data.play)) {
+          let play = data.data.hdplay || data.data.play;
+          if (play.startsWith('/')) play = 'https://www.tikwm.com' + play;
+          return {
+            videoUrl: play,
+            title: data.data.title || 'Video de TikTok',
+            author: data.data.author?.nickname || 'Creador',
+            cover: data.data.cover || null,
+            isHD: !!data.data.hdplay
+          };
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Proveedor 2: SSSTik (Fallback de alta compatibilidad)
   try {
     const res = await fetch('https://ssstik.io/abc?url=dl', {
       method: 'POST',
@@ -711,40 +752,12 @@ async function getTikTokData(url) {
         return {
           videoUrl: linkMatch[1],
           title: title,
-          author: 'MoureDev | Programador'
+          author: 'MoureDev | Programador',
+          isHD: false
         };
       }
     }
   } catch (e) {}
-
-  // Proveedor 2: TikWM (Turbo V2 con múltiples endpoints)
-  const tikwmEndpoints = ['https://www.tikwm.com/api/', 'https://tikwm.com/api/'];
-  for (const ep of tikwmEndpoints) {
-    try {
-      const res = await fetch(ep, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          'Accept': 'application/json, text/plain, */*'
-        },
-        body: `url=${encodeURIComponent(cleanUrl)}&hd=1`
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.code === 0 && data.data && (data.data.play || data.data.hdplay)) {
-          let play = data.data.hdplay || data.data.play;
-          if (play.startsWith('/')) play = 'https://www.tikwm.com' + play;
-          return {
-            videoUrl: play,
-            title: data.data.title || 'Video de TikTok',
-            author: data.data.author?.nickname || 'Creador',
-            cover: data.data.cover || null
-          };
-        }
-      }
-    } catch (e) {}
-  }
 
   // Proveedor 3: Metadata oficial oEmbed
   try {
@@ -754,7 +767,8 @@ async function getTikTokData(url) {
       return {
         videoUrl: null,
         title: odata.title || 'Video de TikTok',
-        author: odata.author_name || 'Creador'
+        author: odata.author_name || 'Creador',
+        isHD: false
       };
     }
   } catch (e) {}
