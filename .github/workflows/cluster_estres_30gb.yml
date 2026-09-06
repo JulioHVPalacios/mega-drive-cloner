@@ -1,16 +1,8 @@
-name: '⚡ Clúster Dual Turbo v7 Apex (Descarga 32-Stream + Subida 256M)'
+name: '⚡ Clúster Cuádruple Apex Swarm (4 Nodos Paralelos - 30.8 GB Reales)'
 
 on:
   workflow_dispatch:
     inputs:
-      architecture_mode:
-        description: '⚡ Arquitectura de Destino'
-        required: true
-        default: 'balanced'
-        type: choice
-        options:
-          - 'balanced'
-          - 'midrive_only'
       destination_folder:
         description: '📁 Carpeta de destino en Google Drive'
         required: true
@@ -31,13 +23,25 @@ jobs:
       matrix:
         include:
           - nodo: 1
-            name: 'AlmaLinux 9 DVD (15.2GB Apex-Engine)'
-            filename: 'AlmaLinux-9-latest-x86_64-dvd.iso'
-            urls: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso https://mirrors.ircam.fr/pub/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso https://mirror.nl.leaseweb.net/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso'
+            name: 'AlmaLinux 9 Min (2.8GB) + openSUSE Leap (4.6GB) ➔ Julio'
+            target: 'midrive'
+            account: 'Julio Palacios (5TB - midrive)'
+            urls: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-minimal.iso https://mirror.uepg.br/opensuse/distribution/leap/15.6/iso/openSUSE-Leap-15.6-DVD-x86_64-Build710.3-Media.iso'
           - nodo: 2
-            name: 'Rocky Linux 9 DVD (15.2GB Apex-Engine)'
-            filename: 'Rocky-9-latest-x86_64-dvd.iso'
-            urls: 'https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://rocky-linux-europe-west4.s3.nl-ams.scw.cloud/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://mirrors.ircam.fr/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso https://mirror.oxilion.nl/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-dvd.iso'
+            name: 'Ubuntu 24.04 (6.2GB) + Arch Linux (1.1GB) ➔ Julio'
+            target: 'midrive'
+            account: 'Julio Palacios (5TB - midrive)'
+            urls: 'https://releases.ubuntu.com/24.04/ubuntu-24.04.4-desktop-amd64.iso https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso'
+          - nodo: 3
+            name: 'Rocky Linux 9 Min (2.8GB) + Ubuntu 22.04 (4.8GB) ➔ Vexor'
+            target: 'midrive2'
+            account: 'Vexor Group (5TB - midrive2)'
+            urls: 'https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-minimal.iso https://releases.ubuntu.com/22.04/ubuntu-22.04.5-desktop-amd64.iso'
+          - nodo: 4
+            name: 'Debian 13 (3.7GB) + Ubuntu Server (3.2GB) + CentOS (1.6GB) ➔ Vexor'
+            target: 'midrive2'
+            account: 'Vexor Group (5TB - midrive2)'
+            urls: 'https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso https://mirror.stream.centos.org/9-stream/BaseOS/x86_64/iso/CentOS-Stream-9-latest-x86_64-boot.iso'
       fail-fast: false
 
     steps:
@@ -70,11 +74,11 @@ jobs:
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
           rclone listremotes
 
-      - name: 🌪️ Ejecutar Transferencia Apex-Engine (Descarga 32-Stream + Chunks 256MB)
+      - name: 🌪️ Ejecutar Transferencia Apex Swarm (Aria2c Multi-URL -i + Chunks 256MB)
         env:
           NODO_ID: ${{ matrix.nodo }}
-          ARCH_MODE: ${{ inputs.architecture_mode }}
-          FILENAME: ${{ matrix.filename }}
+          TARGET_REMOTE: ${{ matrix.target }}
+          ACCOUNT_LABEL: ${{ matrix.account }}
           SOURCE_URLS: ${{ matrix.urls }}
           DEST_FOLDER: ${{ inputs.destination_folder }}
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -84,23 +88,12 @@ jobs:
           import os, time, subprocess, shutil, json, urllib.request
 
           nodo_id = int(os.environ.get('NODO_ID', '1'))
-          arch_mode = os.environ.get('ARCH_MODE', 'balanced').strip()
-          filename = os.environ.get('FILENAME', 'archivo.iso').strip()
+          target_remote = os.environ.get('TARGET_REMOTE', 'midrive').strip()
+          account_label = os.environ.get('ACCOUNT_LABEL', '').strip()
           source_urls = os.environ.get('SOURCE_URLS', '').strip().split()
           base_folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/test_cluster_30gb_v4').strip()
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
-
-          if arch_mode == 'midrive_only':
-              target_remote = 'midrive'
-              account_label = 'Julio Palacios (midrive - 100% Exclusivo)'
-          else:
-              if nodo_id == 1:
-                  target_remote = 'midrive'
-                  account_label = 'Julio Palacios (5TB - midrive)'
-              else:
-                  target_remote = 'midrive2'
-                  account_label = 'Vexor Group (5TB - midrive2)'
 
           dest_remote = f"{target_remote}:{base_folder}/nodo_{nodo_id}"
 
@@ -117,9 +110,9 @@ jobs:
 
           print("")
           print("="*70)
-          print(f"🚀 INICIANDO NODO {nodo_id} [APEX-ENGINE v7]")
+          print(f"🚀 INICIANDO NODO {nodo_id} [APEX SWARM v8 - 4 NODOS EN PARALELO]")
           print(f"🎯 Destino Físico: {dest_remote} ({account_label})")
-          print(f"🌐 Fuentes Multi-Mirror ({len(source_urls)} espejos concurrentes):")
+          print(f"🌐 Archivos a Transferir ({len(source_urls)} enlaces independientes):")
           for u in source_urls:
               print(f"   -> {u}")
           print("="*70)
@@ -127,47 +120,59 @@ jobs:
           work_dir = f"/tmp/nodo_{nodo_id}_workdir"
           shutil.rmtree(work_dir, ignore_errors=True)
           os.makedirs(work_dir, exist_ok=True)
-          local_filepath = os.path.join(work_dir, filename)
+
+          # Crear archivo input para Aria2c con un URL por línea (fuerza descarga de CADA archivo por separado)
+          input_file = f"/tmp/nodo_{nodo_id}_urls.txt"
+          with open(input_file, 'w', encoding='utf-8') as f:
+              for u in source_urls:
+                  f.write(f"{u}\n")
 
           start_total = time.time()
 
-          # 1. Descarga Apex Multi-Stream con Aria2c (32 hilos concurrentes, 128MB RAM cache)
-          print(f"⚡ [PASO 1] Descargando {filename} con Aria2c Multi-Stream (32 hilos concurrentes)...")
+          # 1. Descarga Paralela de CADA Archivo con Aria2c (-i fuerza descargas independientes)
+          print(f"⚡ [PASO 1] Descargando {len(source_urls)} archivos independientes con Aria2c (-i)...")
           t_dl_start = time.time()
           aria2_cmd = [
               'aria2c',
+              '-i', input_file,
+              '-j', str(len(source_urls)),
               '--max-connection-per-server=16',
-              '--split=32',
+              '--split=16',
               '--min-split-size=5M',
               '--file-allocation=none',
               '--disk-cache=128M',
               '--summary-interval=10',
-              '-d', work_dir,
-              '-o', filename
-          ] + source_urls
+              '-d', work_dir
+          ]
 
           subprocess.run(aria2_cmd, check=True)
           dl_time = time.time() - t_dl_start
-          file_size_bytes = os.path.getsize(local_filepath)
-          file_size_mb = file_size_bytes / (1024 * 1024)
-          file_size_gb = file_size_bytes / (1024 * 1024 * 1024)
-          dl_speed = file_size_mb / max(dl_time, 0.001)
 
-          print(f"✅ Descarga completada: {file_size_mb:.2f} MB en {dl_time:.1f}s ({dl_speed:.2f} MB/s)")
+          # Calcular tamaño total descargado
+          files = [f for f in os.listdir(work_dir) if os.path.isfile(os.path.join(work_dir, f))]
+          total_bytes = sum(os.path.getsize(os.path.join(work_dir, f)) for f in files)
+          total_mb = total_bytes / (1024 * 1024)
+          total_gb = total_bytes / (1024 * 1024 * 1024)
+          dl_speed = total_mb / max(dl_time, 0.001)
 
-          # 2. Subida Óptima a Google Drive con Chunks de 256MB (Punto Óptimo Físico de GFE)
-          print(f"📤 [PASO 2] Inyectando {filename} a Google Drive con Chunks de 256MB...")
+          print(f"✅ Descarga completada: {len(files)} archivos ({total_mb:.2f} MB / {total_gb:.2f} GB) en {dl_time:.1f}s ({dl_speed:.2f} MB/s)")
+          for f in files:
+              sz = os.path.getsize(os.path.join(work_dir, f)) / (1024*1024)
+              print(f"   * {f} ({sz:.2f} MB)")
+
+          # 2. Subida Óptima a Google Drive con Chunks de 256MB y Transfers Concurrentes
+          print(f"📤 [PASO 2] Inyectando {len(files)} archivos a Google Drive con Chunks de 256MB y transfers=4...")
           t_up_start = time.time()
           rclone_cmd = [
               'rclone', 'copy',
-              local_filepath, dest_remote,
+              work_dir, dest_remote,
               '--drive-chunk-size=256M',
               '--drive-upload-cutoff=256M',
-              '--transfers=16',
-              '--checkers=16',
+              '--transfers=4',
+              '--checkers=8',
               '--drive-pacer-min-sleep=10ms',
               '--drive-pacer-burst=200',
-              '--buffer-size=128M',
+              '--buffer-size=64M',
               '--use-mmap',
               '--no-traverse',
               '--stats=10s',
@@ -177,32 +182,34 @@ jobs:
           ]
           subprocess.run(rclone_cmd, check=True)
           up_time = time.time() - t_up_start
-          up_speed = file_size_mb / max(up_time, 0.001)
+          up_speed = total_mb / max(up_time, 0.001)
 
-          print(f"🎉 Subida completada: {file_size_mb:.2f} MB en {up_time:.1f}s ({up_speed:.2f} MB/s)")
+          print(f"🎉 Subida completada: {total_mb:.2f} MB en {up_time:.1f}s ({up_speed:.2f} MB/s)")
 
           # Limpieza inmediata de disco en runner
           shutil.rmtree(work_dir, ignore_errors=True)
+          if os.path.exists(input_file):
+              os.remove(input_file)
           print("🧹 Espacio local liberado inmediatamente.")
 
           elapsed_node = time.time() - start_total
-          avg_speed = file_size_mb / max(elapsed_node, 0.001)
+          avg_speed = total_mb / max(elapsed_node, 0.001)
 
           print("")
           print("#"*70)
           print(f"🏆 [NODO {nodo_id}] FINALIZADO EXITOSAMENTE:")
-          print(f"📦 Volumen Transferido: {file_size_gb:.2f} GB ({file_size_bytes:,} Bytes)")
+          print(f"📦 Volumen Transferido: {total_gb:.2f} GB ({total_bytes:,} Bytes) en {len(files)} archivos")
           print(f"⏱️ Tiempo Total de Nodo: {elapsed_node / 60:.2f} minutos ({elapsed_node:.1f}s)")
           print(f"⚡ Velocidad Neta de Subida: {up_speed:.2f} MB/s ({up_speed * 8:.1f} Mbps)")
           print(f"🚀 Velocidad Promedio E2E: {avg_speed:.2f} MB/s")
           print("#"*70)
 
           notify_tg(
-              f"✅ <b>[NODO {nodo_id}] COMPLETADO [APEX-ENGINE v7]</b>\n\n"
-              f"📦 <b>Archivo:</b> {filename} ({file_size_gb:.2f} GB)\n"
+              f"✅ <b>[NODO {nodo_id}/4] COMPLETADO [APEX SWARM v8]</b>\n\n"
+              f"📦 <b>Carga:</b> {len(files)} archivos ({total_gb:.2f} GB)\n"
               f"⏱️ <b>Tiempo de Nodo:</b> {elapsed_node / 60:.2f} min ({elapsed_node:.1f}s)\n"
-              f"⬇️ <b>Descarga (32 streams):</b> {dl_speed:.1f} MB/s ({dl_time:.1f}s)\n"
-              f"⬆️ <b>Subida a Drive (256M chunks):</b> {up_speed:.1f} MB/s ({up_time:.1f}s)\n"
+              f"⬇️ <b>Descarga:</b> {dl_speed:.1f} MB/s ({dl_time:.1f}s)\n"
+              f"⬆️ <b>Subida a Drive:</b> {up_speed:.1f} MB/s ({up_time:.1f}s)\n"
               f"☁️ <b>Destino:</b> <code>{dest_remote}</code> ({account_label})"
           )
           EOF
@@ -228,7 +235,6 @@ jobs:
 
       - name: 🏆 Auditoría Forense y Purga en Google Drive
         env:
-          ARCH_MODE: ${{ inputs.architecture_mode }}
           DEST_FOLDER: ${{ inputs.destination_folder }}
           PURGE_AFTER: ${{ inputs.purge_after_test }}
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -237,24 +243,18 @@ jobs:
           python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
           import os, subprocess, json, urllib.request
 
-          arch_mode = os.environ.get('ARCH_MODE', 'balanced').strip()
           folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/test_cluster_30gb_v4').strip()
           purge = os.environ.get('PURGE_AFTER', 'true').lower() == 'true'
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
-          if arch_mode == 'midrive_only':
-              targets = [
-                  ('Julio (midrive - Nodo 1)', f'midrive:{folder}/nodo_1'),
-                  ('Julio (midrive - Nodo 2)', f'midrive:{folder}/nodo_2')
-              ]
-              remotes_to_clean = ['midrive']
-          else:
-              targets = [
-                  ('Julio (midrive - Nodo 1)', f'midrive:{folder}/nodo_1'),
-                  ('Vexor (midrive2 - Nodo 2)', f'midrive2:{folder}/nodo_2')
-              ]
-              remotes_to_clean = ['midrive', 'midrive2']
+          targets = [
+              ('Julio (midrive - Nodo 1)', f'midrive:{folder}/nodo_1'),
+              ('Julio (midrive - Nodo 2)', f'midrive:{folder}/nodo_2'),
+              ('Vexor (midrive2 - Nodo 3)', f'midrive2:{folder}/nodo_3'),
+              ('Vexor (midrive2 - Nodo 4)', f'midrive2:{folder}/nodo_4')
+          ]
+          remotes_to_clean = ['midrive', 'midrive2']
 
           def notify_tg(text):
               if not tg_token or not tg_chat_id:
@@ -269,7 +269,7 @@ jobs:
 
           print("")
           print("="*70)
-          print(f"📊 AUDITORÍA FORENSE DE LA PRUEBA EN GOOGLE DRIVE (Modo: {arch_mode}):")
+          print("📊 AUDITORÍA FORENSE DE LA PRUEBA EN GOOGLE DRIVE (4 NODOS EN PARALELO):")
           print("="*70)
 
           total_bytes = 0
@@ -310,10 +310,10 @@ jobs:
                   subprocess.run(['rclone', 'size', f'{r}:DESCARGAS_UNIVERSALES'])
 
           notify_tg(
-              f"🏆 <b>¡CLÚSTER APEX-ENGINE v7 FINALIZADO Y CERTIFICADO!</b>\n\n"
+              f"🏆 <b>¡CLÚSTER CUÁDRUPLE APEX SWARM v8 FINALIZADO!</b>\n\n"
               f"📦 <b>Volumen Total Auditado:</b> {total_gb:.2f} GB ({total_count} objetos)\n"
-              f"⚡ <b>Modo:</b> {arch_mode.upper()} (2 Servidores Azure en Paralelo)\n"
+              f"⚡ <b>Modo:</b> 4 Servidores Azure en Paralelo (2 Julio + 2 Vexor)\n"
               f"🛡️ <b>Purga Post-Auditoría:</b> {'Ejecutada (Tus Drives 100% limpios)' if purge else 'Archivos conservados'}\n"
-              f"🚀 <b>Resultado:</b> Fusión Óptima (Descarga 32-Stream + Subida 256MB Chunks)"
+              f"🚀 <b>Resultado:</b> Arquitectura Enjambre de 30.8 GB Reales"
           )
           EOF
