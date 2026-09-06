@@ -480,8 +480,8 @@ jobs:
           - nodo: 4
             account: 'midrive2'
             account_label: 'Vexor (2TB - midrive2)'
-            name: 'Rocky Linux 9 Min (2.8GB) + openSUSE (4.6GB) = 7.4GB ➔ Vexor'
-            urls: 'https://download.rockylinux.org/pub/rocky/9/isos/x86_64/Rocky-9-latest-x86_64-minimal.iso https://mirror.uepg.br/opensuse/distribution/leap/15.6/iso/openSUSE-Leap-15.6-DVD-x86_64-Build710.3-Media.iso'
+            name: 'AlmaLinux 8 (2.9GB) + Ubuntu 22 Server (2.0GB) + Ubuntu 20 (1.4GB) + Arch (1.6GB) = 7.9GB ➔ Vexor'
+            urls: 'https://repo.almalinux.org/almalinux/8/isos/x86_64/AlmaLinux-8-latest-x86_64-minimal.iso https://releases.ubuntu.com/22.04/ubuntu-22.04.5-live-server-amd64.iso https://releases.ubuntu.com/20.04/ubuntu-20.04.6-live-server-amd64.iso https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso'
       fail-fast: false
     steps:
       - name: ⚡ Optimización Nuclear de Red (Google BBR + Ventana TCP 64MB)
@@ -519,8 +519,9 @@ jobs:
       - name: 🌪️ Ejecutar Transferencia Apex Swarm con Watchdog 230s
         env:
           NODO_ID: ${{ matrix.nodo }}
-          TARGET_ACCOUNT: ${{ matrix.account }}
+          DEFAULT_ACCOUNT: ${{ matrix.account }}
           ACCOUNT_LABEL: ${{ matrix.account_label }}
+          DEST_ACC_INPUT: ${{ inputs.destination_account }}
           SOURCE_URLS: ${{ matrix.urls }}
           DEST_FOLDER: ${{ inputs.destination_folder }}
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -530,7 +531,14 @@ jobs:
           import os, time, subprocess, shutil, json, sys, threading, urllib.request
 
           nodo_id = os.environ.get('NODO_ID', '1').strip()
-          target_account = os.environ.get('TARGET_ACCOUNT', 'midrive').strip()
+          dest_acc_input = os.environ.get('DEST_ACC_INPUT', 'both').strip()
+          default_acc = os.environ.get('DEFAULT_ACCOUNT', 'midrive').strip()
+          if dest_acc_input == 'midrive':
+              target_account = 'midrive'
+          elif dest_acc_input == 'midrive2':
+              target_account = 'midrive2'
+          else:
+              target_account = default_acc
           account_label = os.environ.get('ACCOUNT_LABEL', '').strip()
           folder = os.environ.get('DEST_FOLDER', 'DESCARGAS_UNIVERSALES/test_omniengine_30gb').strip()
           dest_remote = f"{target_account}:{folder}/nodo_{nodo_id}"
@@ -868,8 +876,9 @@ jobs:
       - name: 🌪️ Ejecutar Monolithic RAM Streamer con Watchdog 230s
         env:
           NODO_ID: ${{ matrix.nodo }}
-          TARGET_ACCOUNT: ${{ matrix.account }}
+          DEFAULT_ACCOUNT: ${{ matrix.account }}
           ACCOUNT_LABEL: ${{ matrix.account_label }}
+          DEST_ACC_INPUT: ${{ inputs.destination_account }}
           SOURCE_URL: ${{ matrix.url }}
           FILE_NAME: ${{ matrix.filename }}
           DEST_FOLDER: ${{ inputs.destination_folder }}
@@ -880,7 +889,14 @@ jobs:
           import os, time, subprocess, shutil, json, sys, threading, urllib.request
 
           nodo_id = os.environ.get('NODO_ID', '1').strip()
-          target_account = os.environ.get('TARGET_ACCOUNT', 'midrive').strip()
+          dest_acc_input = os.environ.get('DEST_ACC_INPUT', 'both').strip()
+          default_acc = os.environ.get('DEFAULT_ACCOUNT', 'midrive').strip()
+          if dest_acc_input == 'midrive':
+              target_account = 'midrive'
+          elif dest_acc_input == 'midrive2':
+              target_account = 'midrive2'
+          else:
+              target_account = default_acc
           account_label = os.environ.get('ACCOUNT_LABEL', '').strip()
           url = os.environ.get('SOURCE_URL', '').strip()
           filename = os.environ.get('FILE_NAME', 'stream_file.iso').strip()
