@@ -104,7 +104,6 @@ jobs:
         run: |
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
-          rclone listremotes
 
       - name: 🌪️ Ejecutar Transferencia Apex Swarm con Telemetría Telegram en Vivo
         env:
@@ -117,7 +116,7 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
-          import os, time, subprocess, shutil, json, urllib.request
+          import os, time, subprocess, shutil, json, sys, urllib.request
 
           nodo_id = os.environ.get('NODO_ID', '1').strip()
           target_account = os.environ.get('TARGET_ACCOUNT', 'midrive').strip()
@@ -176,6 +175,13 @@ jobs:
           dl_speed = total_mb / max(dl_time, 0.001)
 
           notify_tg(f"⬇️ <b>[NODO {nodo_id}/4] DESCARGA COMPLETADA</b>\nArchivos: {len(files)} ({total_gb:.2f} GB)\nTiempo: {dl_time:.1f}s ({dl_speed:.1f} MB/s)\nIniciando subida a Drive...")
+
+          # Watchdog estricto de 230 segundos (< 4 min)
+          if time.time() - start_total > 230:
+              notify_tg(f"⚠️ [Nodo {nodo_id}] Tiempo excedido (3m 50s). Abortando y purgando...")
+              shutil.rmtree(work_dir, ignore_errors=True)
+              subprocess.run(['rclone', 'purge', dest_remote])
+              sys.exit(1)
 
           t_up_start = time.time()
           rclone_cmd = [
@@ -306,7 +312,7 @@ jobs:
           EOF
 
   # =========================================================================
-  # MODO 2: MONOLITHIC_STREAM (Streaming Dual Simultáneo en Paralelo < 4 Min)
+  # MODO 2: MONOLITHIC_STREAM (Streaming Dual Simultáneo en Paralelo con Watchdog < 4 Min)
   # =========================================================================
   monolithic_stream:
     name: '💿 Stream Nodo ${{ matrix.nodo }} - ${{ matrix.name }}'
@@ -316,10 +322,10 @@ jobs:
       matrix:
         include:
           - nodo: 1
-            name: 'AlmaLinux 9 DVD (15.15 GB) ➔ Julio'
+            name: 'Ubuntu 24.04 (6.2GB) + Debian 13 (3.7GB) + openSUSE (4.6GB) ➔ Julio'
             account: 'midrive'
-            urls: 'https://repo.almalinux.org/almalinux/9/isos/x86_64/AlmaLinux-9-latest-x86_64-dvd.iso'
-            filenames: 'AlmaLinux-9-latest-x86_64-dvd.iso'
+            urls: 'https://releases.ubuntu.com/24.04/ubuntu-24.04.4-desktop-amd64.iso https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/debian-13.6.0-amd64-DVD-1.iso https://mirror.uepg.br/opensuse/distribution/leap/15.6/iso/openSUSE-Leap-15.6-DVD-x86_64-Build710.3-Media.iso'
+            filenames: 'ubuntu-24.04-desktop.iso debian-13-DVD.iso openSUSE-15.6-DVD.iso'
           - nodo: 2
             name: 'AlmaLinux 8 DVD (13.74 GB) + Arch (1.61 GB) ➔ Vexor'
             account: 'midrive2'
@@ -351,7 +357,7 @@ jobs:
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
 
-      - name: '🌊 Cut-Through RAM Streaming Directo (0 Bytes Disco Azure)'
+      - name: '🌊 Cut-Through RAM Streaming Directo (0 Bytes Disco Azure) con Watchdog'
         env:
           NODO_ID: ${{ matrix.nodo }}
           NODO_NAME: ${{ matrix.name }}
@@ -363,7 +369,7 @@ jobs:
           TG_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
-          import os, time, subprocess, json, threading, urllib.request
+          import os, time, subprocess, json, threading, sys, urllib.request
 
           nodo_id = os.environ.get('NODO_ID', '1').strip()
           nodo_name = os.environ.get('NODO_NAME', '').strip()
@@ -374,6 +380,8 @@ jobs:
           dest_base = f"{target_account}:{folder}/stream_nodo_{nodo_id}"
           tg_token = os.environ.get('TG_TOKEN', '').strip()
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
+
+          MAX_TIMEOUT_SECONDS = 230  # 3m 50s estrictos (Regla estricta < 4 minutos)
 
           def notify_tg(text):
               if not tg_token or not tg_chat_id:
@@ -390,54 +398,85 @@ jobs:
               f"🌊 <b>[STREAM NODO {nodo_id}/2] INICIADO</b>\n"
               f"Carga: {nodo_name}\n"
               f"Tecnología: RAM Ring-Buffer 256MB (0 B en disco)\n"
+              f"Watchdog Activo: Corte automático y purga a los 230s (< 4 min)\n"
               f"Destino: <code>{dest_base}</code>"
           )
 
           t_node_start = time.time()
           total_node_bytes = 0
 
-          for url, filename in zip(urls, filenames):
-              dest_file_remote = f"{dest_base}/{filename}"
-              notify_tg(f"▶️ [Nodo {nodo_id}] Transmitiendo vía RAM: <code>{filename}</code>...")
-              t0 = time.time()
+          # Watchdog Thread para abortar y purgar si supera los 230s
+          stop_watchdog = threading.Event()
+          current_process = None
 
-              # Background heartbeat thread to keep Telegram informed every 45 seconds
-              stop_heartbeat = threading.Event()
-              def stream_heartbeat():
-                  while not stop_heartbeat.wait(45.0):
-                      cur_elapsed = time.time() - t0
-                      notify_tg(f"⏳ [Nodo {nodo_id}] Streaming en curso: <code>{filename}</code> ({int(cur_elapsed)}s transcurridos)...")
+          def watchdog_monitor():
+              while not stop_watchdog.wait(5.0):
+                  elapsed = time.time() - t_node_start
+                  if elapsed >= MAX_TIMEOUT_SECONDS:
+                      notify_tg(f"🚨 <b>[CORTE AUTOMÁTICO NODO {nodo_id}]</b> Superó los 3m 50s ({int(elapsed)}s). Cancelando y purgando...")
+                      if current_process and current_process.poll() is None:
+                          try:
+                              current_process.kill()
+                          except:
+                              pass
+                      subprocess.run(['rclone', 'purge', dest_base])
+                      sys.exit(1)
 
-              hb_thread = threading.Thread(target=stream_heartbeat, daemon=True)
-              hb_thread.start()
+          wd_thread = threading.Thread(target=watchdog_monitor, daemon=True)
+          wd_thread.start()
 
-              # Direct RAM stream curl -> rclone rcat
-              curl_cmd = f"curl -fSL '{url}' | rclone rcat '{dest_file_remote}' --drive-chunk-size=256M --buffer-size=256M --stats=15s --stats-one-line"
-              try:
-                  subprocess.run(curl_cmd, shell=True, check=True)
-              finally:
+          try:
+              for url, filename in zip(urls, filenames):
+                  if time.time() - t_node_start >= MAX_TIMEOUT_SECONDS:
+                      break
+
+                  dest_file_remote = f"{dest_base}/{filename}"
+                  notify_tg(f"▶️ [Nodo {nodo_id}] Transmitiendo vía RAM: <code>{filename}</code>...")
+                  t0 = time.time()
+
+                  # Live Heartbeat to Telegram every 45 seconds
+                  stop_heartbeat = threading.Event()
+                  def stream_heartbeat():
+                      while not stop_heartbeat.wait(45.0):
+                          cur_elapsed = time.time() - t0
+                          notify_tg(f"⏳ [Nodo {nodo_id}] Streaming en curso: <code>{filename}</code> ({int(cur_elapsed)}s transcurridos)...")
+
+                  hb_thread = threading.Thread(target=stream_heartbeat, daemon=True)
+                  hb_thread.start()
+
+                  curl_cmd = f"curl -fSL '{url}' | rclone rcat '{dest_file_remote}' --drive-chunk-size=256M --buffer-size=256M --stats=15s --stats-one-line"
+                  proc = subprocess.Popen(curl_cmd, shell=True)
+                  current_process = proc
+                  proc.wait()
                   stop_heartbeat.set()
 
-              t_file = time.time() - t0
+                  if proc.returncode != 0:
+                      notify_tg(f"❌ [Nodo {nodo_id}] Error en stream de <code>{filename}</code> (Exit code {proc.returncode})")
+                      sys.exit(proc.returncode)
 
-              res_sz = subprocess.run(['rclone', 'size', dest_file_remote, '--json'], stdout=subprocess.PIPE, text=True)
-              f_bytes = 0
-              try:
-                  f_bytes = json.loads(res_sz.stdout).get('bytes', 0)
-              except:
-                  pass
-              total_node_bytes += f_bytes
-              f_gb = f_bytes / (1024*1024*1024)
-              speed = (f_bytes / (1024*1024)) / max(t_file, 0.001)
+                  t_file = time.time() - t0
 
-              notify_tg(f"✅ [Nodo {nodo_id}] <code>{filename}</code> ({f_gb:.2f} GB) completado en {t_file/60:.2f}m ({speed:.1f} MB/s)")
+                  res_sz = subprocess.run(['rclone', 'size', dest_file_remote, '--json'], stdout=subprocess.PIPE, text=True)
+                  f_bytes = 0
+                  try:
+                      f_bytes = json.loads(res_sz.stdout).get('bytes', 0)
+                  except:
+                      pass
+                  total_node_bytes += f_bytes
+                  f_gb = f_bytes / (1024*1024*1024)
+                  speed = (f_bytes / (1024*1024)) / max(t_file, 0.001)
+
+                  notify_tg(f"✅ [Nodo {nodo_id}] <code>{filename}</code> ({f_gb:.2f} GB) completado en {t_file/60:.2f}m ({speed:.1f} MB/s)")
+
+          finally:
+              stop_watchdog.set()
 
           elapsed_node = time.time() - t_node_start
           tot_gb = total_node_bytes / (1024*1024*1024)
           avg_speed = (total_node_bytes / (1024*1024)) / max(elapsed_node, 0.001)
 
           notify_tg(
-              f"🏆 <b>[STREAM NODO {nodo_id}/2] FINALIZADO</b>\n\n"
+              f"🏆 <b>[STREAM NODO {nodo_id}/2] FINALIZADO CON ÉXITO</b>\n\n"
               f"📦 <b>Volumen:</b> {tot_gb:.2f} GB\n"
               f"⏱️ <b>Tiempo de Nodo:</b> {elapsed_node / 60:.2f} min ({elapsed_node:.1f}s)\n"
               f"⚡ <b>Velocidad Neta RAM Stream:</b> {avg_speed:.1f} MB/s\n"
@@ -481,7 +520,7 @@ jobs:
           tg_chat_id = os.environ.get('TG_CHAT_ID', '').strip()
 
           targets = [
-              ('Julio (midrive - Nodo 1: AlmaLinux 9 DVD)', f'midrive:{folder}/stream_nodo_1'),
+              ('Julio (midrive - Nodo 1: Ubuntu 24 + Debian 13 + openSUSE)', f'midrive:{folder}/stream_nodo_1'),
               ('Vexor (midrive2 - Nodo 2: AlmaLinux 8 + Arch)', f'midrive2:{folder}/stream_nodo_2')
           ]
           remotes_to_clean = ['midrive', 'midrive2']
