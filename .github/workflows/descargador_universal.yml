@@ -62,7 +62,7 @@ jobs:
       - name: 🛠️ Instalar Motores de Alta Velocidad Oficiales (Rclone, Aria2, Megatools, yt-dlp)
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y aria2 curl python3 python3-pip megatools ffmpeg nodejs
+          sudo apt-get install -y aria2 curl python3 python3-pip megatools ffmpeg
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
           curl https://rclone.org/install.sh | sudo bash
@@ -276,17 +276,16 @@ jobs:
 
           # CASO 3: Streams de Video Multimedia (YouTube, TikTok, Instagram, Twitter/X, Vimeo, Twitch, HLS, .m3u8, .mpd)
           elif any(k in source.lower() for k in ['youtube.com', 'youtu.be', 'tiktok.com', 'instagram.com', 'twitter.com', 'x.com', 'vimeo.com', '.m3u8', '.mpd', 'twitch.tv', 'facebook.com', 'reddit.com']):
-              print('🎬 Detectado stream de video / multimedia. Descargando con yt-dlp Turbo Anti-Bot...')
+              print('🎬 Detectado stream de video / multimedia. Descargando con motor Turbo Anti-Bot...')
               os.makedirs('/tmp/stream_downloads', exist_ok=True)
-
               client_variants = [
-                  ['--extractor-args', 'youtube:player_client=android'],
-                  ['--extractor-args', 'youtube:player_client=ios'],
-                  ['--extractor-args', 'youtube:player_client=android,ios,mweb'],
-                  ['--extractor-args', 'youtube:player_client=mweb'],
+                  ['--extractor-args', 'youtube:player_client=tv_embedded,web_creator,tv'],
+                  ['--extractor-args', 'youtube:player_client=tv_embedded'],
+                  ['--extractor-args', 'youtube:player_client=web_creator'],
+                  ['--extractor-args', 'youtube:player_client=android_embedded,web_embedded'],
+                  ['--extractor-args', 'youtube:player_client=mweb,web_safari'],
                   []
               ]
-
               downloaded = False
               last_err = None
               for c_args in client_variants:
@@ -296,7 +295,6 @@ jobs:
                           '--no-check-certificates',
                           '--concurrent-fragments', '16',
                           '--buffer-size', '64K',
-                          '--js-runtimes', 'node',
                           '-o', '/tmp/stream_downloads/%(title)s.%(ext)s'
                       ] + c_args + [source]
                       print(f'🚀 Intentando descarga con argumentos: {c_args}')
@@ -308,7 +306,7 @@ jobs:
                       last_err = e
 
               if not downloaded:
-                  raise last_err or RuntimeError('No se pudo descargar el stream multimedia tras rotar todos los clientes anti-bot.')
+                  raise last_err or RuntimeError('No se pudo descargar el stream multimedia.')
 
               print('📤 Subiendo video(s) hacia tu nube destino...')
               cmd1 = ['rclone', 'copy', '/tmp/stream_downloads', dest_remote] + turbo_flags + ['-P', '-v']
@@ -431,16 +429,19 @@ jobs:
           if status == "success":
               icon = "🎉"
               title = "¡TRANSFERENCIA COMPLETADA AL 100%!"
+              hint = "✅ Archivos sincronizados y disponibles en tu nube destino."
           else:
               icon = "❌"
               title = "LA TRANSFERENCIA FALLÓ O FUE CANCELADA"
+              hint = "💡 <i>Si era un enlace de YouTube, Google bloqueó la IP de Azure con su filtro anti-bot. Puedes reproducirlo o verlo directo en Telegram o resumirlo con IA.</i>"
 
           html_msg = (
               f"{icon} <b>{title}</b>\n\n"
               f"📦 <b>Origen:</b> <code>{source}</code>\n"
               f"☁️ <b>Destino:</b> {target}\n"
               f"📁 <b>Carpeta:</b> <code>{folder}</code>\n"
-              f"⏱️ <b>Servidor:</b> Microsoft Azure Cloud (PC Apagada)"
+              f"⏱️ <b>Servidor:</b> Microsoft Azure Cloud (PC Apagada)\n\n"
+              f"{hint}"
           )
 
           data = json.dumps({
