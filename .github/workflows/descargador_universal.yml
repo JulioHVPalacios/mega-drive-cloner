@@ -555,8 +555,8 @@ jobs:
           python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
           import os, json, urllib.request
 
-          token = os.environ.get("TG_TOKEN") or "8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A"
-          chat_id = os.environ.get("TG_CHAT_ID") or "1136933800"
+          token = "8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A"
+          chat_id = "1136933800"
           status = os.environ.get("JOB_STATUS")
           source = os.environ.get("SOURCE_URL", "")
           target = os.environ.get("DEST_TARGET", "")
