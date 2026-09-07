@@ -12,7 +12,7 @@ echo  para que funcione PERPETUAMENTE con tu PC 100%% APAGADA.
 echo =====================================================================
 echo.
 
-set "BOT_TOKEN=8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI"
+set "BOT_TOKEN=8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A"
 
 set /p WORKER_URL="Pega aqui la URL de tu Cloudflare Worker (ej: https://omnicloud-bot.tu-subdominio.workers.dev): "
 
