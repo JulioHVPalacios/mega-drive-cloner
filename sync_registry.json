@@ -23,6 +23,14 @@
       "dest_folder": "Vide",
       "dest_remote": "midrive",
       "active": true
+    },
+    {
+      "id": "cursos_reparacion_celulares",
+      "name": "Cursos Reparacion Celulares y Material Tecnico",
+      "source_id": "1-ibQoIu-DkcLYfB9gKQP5Ts-B_3PP0Ya",
+      "dest_folder": "Vide",
+      "dest_remote": "midrive",
+      "active": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-﻿name: 🔄 Sincronizador Universal y Watchdog Multi-Carpeta (24/7 en Azure)
+name: 🔄 Sincronizador Universal y Watchdog Multi-Carpeta (24/7 en Azure)
 
 on:
   schedule:
@@ -18,6 +18,7 @@ on:
           - 'megapack_programacion'
           - 'libros_programacion_pdf'
           - 'cursos_reparacion_hardware'
+          - 'cursos_reparacion_celulares'
       dry_run:
         description: 'Modo Auditoría (Dry-Run: solo detectar cambios sin descargar)'
         required: false
@@ -89,12 +90,17 @@ jobs:
             DRY="--dry-run"
           fi
 
-          echo "Ejecutando universal_watchdog.py para objetivo: $TARGET en destino: $DEST (dry-run: $DRY)"
+          FORCE_NOTIFY=""
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            FORCE_NOTIFY="--force-notify"
+          fi
+
+          echo "Ejecutando universal_watchdog.py para objetivo: $TARGET en destino: $DEST (dry-run: $DRY, notify: $FORCE_NOTIFY)"
           python3 universal_watchdog.py \
             --registry sync_registry.json \
             --target "$TARGET" \
             --dest "$DEST" \
-            $DRY
+            $DRY $FORCE_NOTIFY
 
       - name: 🚨 Alerta de Falla en Universal Watchdog a Telegram
         if: failure()

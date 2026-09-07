@@ -223,8 +223,8 @@ export default {
           return new Response('OK', { status: 200 });
         }
 
-        // 3.11 Sincronizar y Monitoreo Universal (/vigilar, /vigiladas, /sync)
-        if (text === '🛰️ Vigilante 24/7' || norm === '/vigilar' || norm === '/vigiladas' || norm.startsWith('/vigilar ') || norm.startsWith('vigilar ')) {
+        // 3.11 Sincronizar y Monitoreo Universal (/vigilar, /vincular, /monitoreo, /vigiladas, /sync)
+        if (text === '🛰️ Vigilante 24/7' || norm === '/vigilar' || norm === '/vincular' || norm === '/monitoreo' || norm === '/watchdog' || norm === '/vigiladas' || norm.startsWith('/vigilar ') || norm.startsWith('vigilar ') || norm.startsWith('/vincular ') || norm.startsWith('vincular ')) {
           await handleWatchCommand(botToken, chatId, text, repo, pat);
           return new Response('OK', { status: 200 });
         }
@@ -1899,25 +1899,28 @@ async function handleStatus(token, chatId, repo, pat) {
 
 async function handleWatchCommand(token, chatId, text, repo, pat) {
   try {
-    const raw = text.replace(/^\/?[vV]igilar\s*/i, '').trim();
-    if (!raw || text.trim() === '/vigilar' || text.trim() === '/vigiladas' || text.trim() === '🛰️ Vigilante 24/7') {
+    const raw = text.replace(/^\/?(?:vigilar|vincular|monitoreo|watchdog|vigiladas)\s*/i, '').trim();
+    if (!raw || text.trim() === '/vigilar' || text.trim() === '/vincular' || text.trim() === '/monitoreo' || text.trim() === '/watchdog' || text.trim() === '/vigiladas' || text.trim() === '🛰️ Vigilante 24/7') {
       const infoMsg = '🛰️ <b>SISTEMA UNIVERSAL DE MONITOREO Y AUTO-SINCRONIZACIÓN 24/7</b>\n\n' +
         'El motor en Azure vigila continuamente estas carpetas compartidas:\n\n' +
         '1️⃣ <b>Megapack Programación Completo (825 GB)</b>\n' +
         '   📂 Destino: <code>midrive:MEGAPACK_PROGRAMACION_COMPLETO</code>\n' +
         '   🆔 ID: <code>1TCTh_B3E_ztPGOznWL75yrymywJrKLJl</code>\n\n' +
-        '2️⃣ <b>Biblioteca Libros Programación PDF (7.7 GB)</b>\n' +
+        '2️⃣ <b>Biblioteca Libros Programación PDF (7.7 GB - 80 especialidades)</b>\n' +
         '   📂 Destino: <code>midrive:Carp</code>\n' +
         '   🆔 ID: <code>1hdSylyYGvshO7SLYz7y5ZbYEo67WKFB3</code>\n\n' +
-        '3️⃣ <b>Cursos Reparación Hardware, PC y TVs (11.7 GB)</b>\n' +
+        '3️⃣ <b>Cursos Reparación Hardware, PC, Laptops y TVs (11.7 GB)</b>\n' +
         '   📂 Destino: <code>midrive:Vide</code>\n' +
         '   🆔 ID: <code>1oRTw1rJ9Gu1NyX2vy5zKQFg0KoOtAYH9</code>\n\n' +
-        '➕ <b>¿CÓMO VIGILAR CUALQUIER OTRA CARPETA COMPARTIDA?</b>\n' +
+        '4️⃣ <b>Cursos Reparación de Celulares y Material Técnico</b>\n' +
+        '   📂 Destino: <code>midrive:Vide</code>\n' +
+        '   🆔 ID: <code>1-ibQoIu-DkcLYfB9gKQP5Ts-B_3PP0Ya</code>\n\n' +
+        '➕ <b>¿CÓMO VINCULAR CUALQUIER OTRA CARPETA COMPARTIDA?</b>\n' +
         'Envía un mensaje con el formato:\n' +
-        '<code>/vigilar [enlace_de_drive] [carpeta_destino] [Nombre Opcional]</code>\n\n' +
+        '<code>/vincular [enlace_de_drive] [carpeta_destino] [Nombre Opcional]</code>\n\n' +
         '👉 <i>Ejemplo:</i>\n' +
-        '<code>/vigilar https://drive.google.com/drive/folders/1ABCxyz... Cursos_Linux Cursos Nuevos Linux</code>\n\n' +
-        '🛡️ <b>Garantía de Seguridad:</b> Modo 100% Aditivo (CERO BORRADOS). Si el creador sube algo nuevo, el vigilante lo descarga directo a tu Drive.';
+        '<code>/vincular https://drive.google.com/drive/folders/1ABCxyz... Cursos_Linux Cursos Nuevos Linux</code>\n\n' +
+        '🛡️ <b>Garantía de Seguridad:</b> Modo 100% Aditivo (CERO BORRADOS). Si el creador sube o actualiza algo, el vigilante lo descarga directo a tu Drive.';
 
       const kbd = {
         inline_keyboard: [

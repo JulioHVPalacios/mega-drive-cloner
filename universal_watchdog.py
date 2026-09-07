@@ -1,18 +1,19 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
-UNIVERSAL WATCHDOG & SYNCHRONIZER (Desatendido 24/7 en Azure)
+UNIVERSAL WATCHDOG & SYNCHRONIZER 24/7 (Desatendido en Azure)
 Monitorea todas las carpetas compartidas registradas en sync_registry.json,
-detecta novedades subidas por los creadores originales y las descarga
-en modo estrictamente ADITIVO (CERO BORRADOS) a tu Google Drive.
+detecta novedades (archivos nuevos o actualizados por los creadores originales)
+y las sincroniza en modo estrictamente ADITIVO (CERO BORRADOS) a tu Google Drive.
 """
 
 import os
 import sys
 
+# Forzar flush inmediato y codificación UTF-8
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 if sys.stderr and hasattr(sys.stderr, "reconfigure"):
-    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
 
 import json
 import time
@@ -26,7 +27,7 @@ TG_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "1136933800")
 
 def notify_telegram(message_html):
     if not TG_TOKEN or not TG_CHAT_ID:
-        print("ℹ️ Telegram credentials no configuradas. Omitiendo notificación.")
+        print("ℹ️ Telegram credentials no configuradas. Omitiendo notificación.", flush=True)
         return False
     url = f"https://api.telegram.org/bot{TG_TOKEN}/sendMessage"
     payload = json.dumps({
@@ -40,12 +41,12 @@ def notify_telegram(message_html):
         with urllib.request.urlopen(req, timeout=15) as resp:
             return resp.status == 200
     except Exception as e:
-        print(f"⚠️ Error al enviar alerta a Telegram: {e}")
+        print(f"⚠️ Error al enviar alerta a Telegram: {e}", flush=True)
         return False
 
-def run_watchdog(registry_path="sync_registry.json", target_id="all", dry_run=False, dest_override=None):
+def run_watchdog(registry_path="sync_registry.json", target_id="all", dry_run=False, dest_override=None, force_notify=False):
     if not os.path.exists(registry_path):
-        print(f"❌ Error: No se encontró el registro en {registry_path}")
+        print(f"❌ Error: No se encontró el registro en {registry_path}", flush=True)
         sys.exit(1)
 
     with open(registry_path, "r", encoding="utf-8") as f:
@@ -53,7 +54,7 @@ def run_watchdog(registry_path="sync_registry.json", target_id="all", dry_run=Fa
 
     folders = registry.get("monitored_folders", [])
     if not folders:
-        print("ℹ️ No hay carpetas registradas en el watchdog.")
+        print("ℹ️ No hay carpetas registradas en el watchdog.", flush=True)
         return
 
     diffs_dir = "/tmp/diffs" if os.name != "nt" else os.path.join(os.environ.get("TEMP", "C:\\Temp"), "diffs")
@@ -61,11 +62,12 @@ def run_watchdog(registry_path="sync_registry.json", target_id="all", dry_run=Fa
 
     results = []
     total_new_files = 0
+    total_modified_files = 0
 
-    print("=" * 70)
-    print("🛰️ INICIANDO UNIVERSAL WATCHDOG & SYNCHRONIZER 24/7")
-    print(f"📁 Registro: {registry_path} | Objetivo: {target_id} | Dry-run: {dry_run}")
-    print("=" * 70)
+    print("=" * 70, flush=True)
+    print("🛰️ INICIANDO UNIVERSAL WATCHDOG & SYNCHRONIZER 24/7", flush=True)
+    print(f"📁 Registro: {registry_path} | Objetivo: {target_id} | Dry-run: {dry_run}", flush=True)
+    print("=" * 70, flush=True)
 
     for item in folders:
         f_id = item.get("id")
@@ -79,72 +81,94 @@ def run_watchdog(registry_path="sync_registry.json", target_id="all", dry_run=Fa
             continue
 
         if not is_active:
-            print(f"\n⏸️ Omitiendo carpeta inactiva: {f_name}")
-            results.append({"name": f_name, "status": "⏸️ Inactiva", "new": 0})
+            print(f"\n⏸️ Omitiendo carpeta inactiva: {f_name}", flush=True)
+            results.append({"name": f_name, "status": "⏸️ Inactiva", "new": 0, "mod": 0})
             continue
 
         if not source_id:
-            print(f"\n⚠️ Falta source_id para: {f_name}")
-            results.append({"name": f_name, "status": "⚠️ Sin ID origen", "new": 0})
+            print(f"\n⚠️ Falta source_id para: {f_name}", flush=True)
+            results.append({"name": f_name, "status": "⚠️ Sin ID origen", "new": 0, "mod": 0})
             continue
 
         src = f"midrive,root_folder_id={source_id}:"
         dst = f"{dest_remote}:{dest_folder}"
-        diff_file = os.path.join(diffs_dir, f"{f_id}_nuevos.txt")
+        missing_file = os.path.join(diffs_dir, f"{f_id}_faltantes.txt")
+        differ_file = os.path.join(diffs_dir, f"{f_id}_modificados.txt")
 
-        if os.path.exists(diff_file):
-            try:
-                os.remove(diff_file)
-            except Exception:
-                pass
+        for fpath in (missing_file, differ_file):
+            if os.path.exists(fpath):
+                try:
+                    os.remove(fpath)
+                except Exception:
+                    pass
 
-        print(f"\n🔍 [1/2] Verificando novedades en: {f_name}")
-        print(f"   Origen:  {src}")
-        print(f"   Destino: {dst}")
+        print(f"\n🔍 [1/2] Verificando novedades en: {f_name}", flush=True)
+        print(f"   Origen:  {src}", flush=True)
+        print(f"   Destino: {dst}", flush=True)
 
         check_cmd = [
             "rclone", "check",
             src, dst,
             "--one-way",
-            "--missing-on-dst", diff_file,
+            "--missing-on-dst", missing_file,
+            "--differ", differ_file,
             "--fast-list"
         ]
 
         try:
-            # rclone check retorna exit code 1 si hay diferencias, no es un error de ejecución
+            # rclone check retorna exit code 1 si hay diferencias, no es un fallo de ejecución
             subprocess.run(check_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception as e:
-            print(f"   ❌ Error al ejecutar rclone check: {e}")
-            results.append({"name": f_name, "status": "❌ Error check", "new": 0})
+            print(f"   ❌ Error al ejecutar rclone check: {e}", flush=True)
+            results.append({"name": f_name, "status": "❌ Error check", "new": 0, "mod": 0})
             continue
 
-        new_count = 0
-        if os.path.exists(diff_file) and os.path.getsize(diff_file) > 0:
-            with open(diff_file, "r", encoding="utf-8", errors="ignore") as df:
-                lines = [l.strip() for l in df.readlines() if l.strip()]
-                new_count = len(lines)
+        missing_count = 0
+        if os.path.exists(missing_file) and os.path.getsize(missing_file) > 0:
+            with open(missing_file, "r", encoding="utf-8", errors="ignore") as mf:
+                missing_count = len([l.strip() for l in mf if l.strip()])
 
-        if new_count == 0:
-            print(f"   ✅ 100% al día. No hay archivos nuevos subidos por el creador.")
-            results.append({"name": f_name, "status": "✅ 100% al día", "new": 0})
+        differ_count = 0
+        if os.path.exists(differ_file) and os.path.getsize(differ_file) > 0:
+            with open(differ_file, "r", encoding="utf-8", errors="ignore") as df:
+                differ_count = len([l.strip() for l in df if l.strip()])
+
+        folder_changes = missing_count + differ_count
+
+        if folder_changes == 0:
+            print(f"   ✅ 100% al día. No hay archivos nuevos ni modificados.", flush=True)
+            results.append({"name": f_name, "status": "✅ 100% al día", "new": 0, "mod": 0})
             continue
 
-        total_new_files += new_count
-        print(f"   ⚡ ¡Se detectaron {new_count} archivos/carpetas NUEVOS en el origen!")
-        with open(diff_file, "r", encoding="utf-8", errors="ignore") as df:
-            for idx, line in enumerate(df):
-                if idx < 10:
-                    print(f"      + {line.strip()}")
-                elif idx == 10:
-                    print(f"      ... y {new_count - 10} archivos más.")
-                    break
+        total_new_files += missing_count
+        total_modified_files += differ_count
+        print(f"   ⚡ ¡Se detectaron {missing_count} archivos nuevos y {differ_count} actualizados!", flush=True)
+
+        if os.path.exists(missing_file) and missing_count > 0:
+            with open(missing_file, "r", encoding="utf-8", errors="ignore") as mf:
+                for idx, line in enumerate(mf):
+                    if idx < 6:
+                        print(f"      + [Nuevo] {line.strip()}", flush=True)
+                    elif idx == 6:
+                        print(f"      ... y {missing_count - 6} archivos nuevos más.", flush=True)
+                        break
+
+        if os.path.exists(differ_file) and differ_count > 0:
+            with open(differ_file, "r", encoding="utf-8", errors="ignore") as df:
+                for idx, line in enumerate(df):
+                    if idx < 4:
+                        print(f"      * [Modificado] {line.strip()}", flush=True)
+                    elif idx == 4:
+                        print(f"      ... y {differ_count - 4} archivos modificados más.", flush=True)
+                        break
 
         if dry_run:
-            print("   ℹ️ Modo dry-run activo. No se copiarán archivos.")
-            results.append({"name": f_name, "status": f"🔍 {new_count} detectados (Dry-Run)", "new": new_count})
+            print("   ℹ️ Modo dry-run activo. No se transferirán archivos.", flush=True)
+            status_txt = f"🔍 {missing_count} nuevos, {differ_count} modif. (Auditoría)"
+            results.append({"name": f_name, "status": status_txt, "new": missing_count, "mod": differ_count})
             continue
 
-        print(f"   🚀 [2/2] Sincronizando en modo ESTRICTAMENTE ADITIVO (Cero borrados)...")
+        print(f"   🚀 [2/2] Sincronizando en modo ESTRICTAMENTE ADITIVO (Cero borrados)...", flush=True)
         copy_cmd = [
             "rclone", "copy",
             src, dst,
@@ -167,27 +191,31 @@ def run_watchdog(registry_path="sync_registry.json", target_id="all", dry_run=Fa
         try:
             res = subprocess.run(copy_cmd, check=True)
             elapsed = time.time() - t_start
-            print(f"   🎉 ¡Sincronizado con éxito en {elapsed:.1f}s! ({new_count} archivos transferidos)")
-            results.append({"name": f_name, "status": f"🎉 +{new_count} nuevos sincronizados", "new": new_count})
+            print(f"   🎉 ¡Sincronizado con éxito en {elapsed:.1f}s! ({folder_changes} archivos transferidos)", flush=True)
+            results.append({"name": f_name, "status": f"🎉 +{folder_changes} sincronizados", "new": missing_count, "mod": differ_count})
         except subprocess.CalledProcessError as cpe:
-            print(f"   ❌ Fallo durante la copia: {cpe}")
-            results.append({"name": f_name, "status": "❌ Error en copia", "new": 0})
+            print(f"   ❌ Fallo durante la copia: {cpe}", flush=True)
+            results.append({"name": f_name, "status": "❌ Error en copia", "new": 0, "mod": 0})
 
-    print("\n" + "=" * 70)
-    print("📊 RESUMEN FINAL DEL WATCHDOG:")
-    print("=" * 70)
+    print("\n" + "=" * 70, flush=True)
+    print("📊 RESUMEN FINAL DEL WATCHDOG:", flush=True)
+    print("=" * 70, flush=True)
     for r in results:
-        print(f"• {r['name']}: {r['status']}")
-    print("=" * 70)
+        print(f"• {r['name']}: {r['status']}", flush=True)
+    print("=" * 70, flush=True)
 
     # Notificación inteligente a Telegram
-    # Solo envía push si hubo novedades o si se ejecutó manualmente para una carpeta específica
-    if total_new_files > 0 or target_id != "all":
+    has_novedades = (total_new_files + total_modified_files) > 0
+    if has_novedades or target_id != "all" or force_notify:
         lines = [
-            "🛰️ <b>UNIVERSAL WATCHDOG &amp; SYNC - REPORTE 24/7</b>\n",
-            f"🎯 <b>Novedades detectadas:</b> {total_new_files} archivos.\n",
-            "📋 <b>Detalle por carpeta monitoreada:</b>"
+            "🛰️ <b>UNIVERSAL WATCHDOG &amp; SYNC - REPORTE 24/7</b>\n"
         ]
+        if has_novedades:
+            lines.append(f"🎯 <b>Novedades detectadas:</b> {total_new_files} nuevos, {total_modified_files} actualizados.\n")
+        else:
+            lines.append("✅ <b>Todas las carpetas monitoreadas están 100% al día.</b>\n")
+
+        lines.append("📋 <b>Detalle por carpeta:</b>")
         for r in results:
             lines.append(f"• <b>{r['name']}</b>: {r['status']}")
 
@@ -196,7 +224,7 @@ def run_watchdog(registry_path="sync_registry.json", target_id="all", dry_run=Fa
 
         msg = "\n".join(lines)
         notify_telegram(msg)
-        print("🔔 Notificación enviada a Telegram.")
+        print("🔔 Notificación enviada a Telegram.", flush=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Universal Watchdog & Synchronizer")
@@ -204,11 +232,14 @@ if __name__ == "__main__":
     parser.add_argument("--target", default="all", help="ID de la carpeta específica a sincronizar o 'all'")
     parser.add_argument("--dry-run", action="store_true", help="Solo auditar diferencias sin copiar")
     parser.add_argument("--dest", default=None, help="Sobrescribir unidad de destino (ej. midrive o midrive2)")
+    parser.add_argument("--force-notify", action="store_true", help="Enviar notificación a Telegram incluso sin cambios")
     args = parser.parse_args()
 
     run_watchdog(
         registry_path=args.registry,
         target_id=args.target,
         dry_run=args.dry_run,
-        dest_override=args.dest
+        dest_override=args.dest,
+        force_notify=args.force_notify
     )
+
