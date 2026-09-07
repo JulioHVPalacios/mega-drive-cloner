@@ -1898,11 +1898,12 @@ async function triggerSync(token, chatId, repo, pat) {
       await sendTG(token, chatId, '⚠️ Para disparar tareas automáticas de sincronización desde el celular necesitas agregar GITHUB_PAT en Cloudflare.');
       return;
     }
-    await sendTG(token, chatId, '🔄 Disparando verificación del Megapack en Azure...');
+    await sendTG(token, chatId, '🔄 <b>Escaneando origen compartido en Azure...</b>\nBuscando si el creador subió cursos o actualizaciones nuevas.');
+    const authHeader = pat.startsWith('ghp_') ? `token ${pat}` : `Bearer ${pat}`;
     const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/sincronizador_automatico_megapack.yml/dispatches`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${pat}`,
+        'Authorization': authHeader,
         'User-Agent': 'OmniCloud-Telegram-Bot',
         'Accept': 'application/vnd.github+json',
         'Content-Type': 'application/json'
@@ -1910,9 +1911,10 @@ async function triggerSync(token, chatId, repo, pat) {
       body: JSON.stringify({ ref: 'main' })
     });
     if (res.status === 204) {
-      await sendTG(token, chatId, '✅ ¡Auto-sincronizador lanzado en la nube! Te avisaré si encuentra archivos nuevos.');
+      await sendTG(token, chatId, '🛰️ <b>¡Auto-sincronizador lanzado en Azure!</b>\nComparará el origen contra tus 825 GB. Si hay algo nuevo, lo inyectará sin tocar ni borrar nada de lo tuyo y te avisará.');
     } else {
-      await sendTG(token, chatId, `⚠️ Respuesta de GitHub (Status ${res.status})`);
+      const errText = await res.text().catch(() => '');
+      await sendTG(token, chatId, `⚠️ Respuesta de GitHub (Status ${res.status}): ${errText.slice(0, 100)}`);
     }
   } catch (e) {
     await sendTG(token, chatId, '❌ Error al disparar sync: ' + e.message);

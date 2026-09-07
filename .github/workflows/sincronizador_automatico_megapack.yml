@@ -126,8 +126,8 @@ jobs:
           python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
           import os, json, urllib.request
 
-          token = os.environ.get("TG_TOKEN")
-          chat_id = os.environ.get("TG_CHAT_ID")
+          token = "8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A"
+          chat_id = "1136933800"
 
           if not token or not chat_id:
               print("ℹ️ Telegram credentials not configured. Skipping.")
@@ -171,8 +171,8 @@ jobs:
           python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
           import os, json, urllib.request
 
-          token = os.environ.get("TG_TOKEN")
-          chat_id = os.environ.get("TG_CHAT_ID")
+          token = "8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A"
+          chat_id = "1136933800"
 
           if not token or not chat_id:
               exit(0)
