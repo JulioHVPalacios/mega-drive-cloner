@@ -285,15 +285,16 @@ jobs:
               tk_info = None
               if 'tiktok.com' in clean_url or 'tikwm.com' in clean_url:
                   try:
-                      import urllib.request, urllib.parse, json
-                      api_data = urllib.parse.urlencode({'url': clean_url, 'hd': 1}).encode('utf-8')
-                      req = urllib.request.Request('https://www.tikwm.com/api/', data=api_data, headers={
-                          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                      })
-                      with urllib.request.urlopen(req, timeout=30) as resp:
-                          tk_res = json.loads(resp.read().decode('utf-8'))
-                          if tk_res.get('code') == 0:
-                              tk_info = tk_res.get('data')
+                      import json
+                      curl_api = subprocess.run([
+                          'curl', '-s', '-X', 'POST', 'https://www.tikwm.com/api/',
+                          '-H', 'Content-Type: application/x-www-form-urlencoded',
+                          '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                          '-d', f'url={clean_url}&hd=1'
+                      ], capture_output=True, text=True, timeout=30)
+                      tk_res = json.loads(curl_api.stdout)
+                      if tk_res.get('code') == 0:
+                          tk_info = tk_res.get('data')
                   except Exception as e:
                       print(f'⚠️ Advertencia al consultar TikWM: {e}')
 
@@ -307,7 +308,7 @@ jobs:
                   raw_title = tk_info.get('title') or 'Video_TikTok'
                   safe_title = re.sub(r'[^\w\s-]', '', raw_title)[:50].strip() or 'Video_TikTok'
               else:
-                  video_stream_url = source
+                  raise RuntimeError('No se pudo extraer el stream de video directo de TikTok. Comprueba que el enlace sea público.')
 
               print(f'🎥 Descargando stream de video: {video_stream_url[:60]}...')
               v_path = '/tmp/tiktok_in/video.mp4'
