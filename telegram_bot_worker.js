@@ -56,7 +56,7 @@ export default {
       const botToken = env.TELEGRAM_BOT_TOKEN || '8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI';
       const authChatId = String(env.AUTHORIZED_CHAT_ID || '1136933800');
       const repo = env.GITHUB_REPO || 'JulioHVPalacios/mega-drive-cloner';
-      const pat = env.GITHUB_PAT || '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';
+      const pat = env.GITHUB_PAT || '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';
       const geminiKey = (env.GEMINI_API_KEY || env.GEMINI_KEY || env.GOOGLE_AI_KEY || env.GOOGLE_API_KEY || '').trim();
       const serperKey = (env.SERPER_API_KEY || env.SERPER_KEY || '').trim();
 
@@ -560,7 +560,8 @@ export default {
               await sendTG(botToken, chatId, '⏳ <i>Extrayendo video sin marca de agua para guardar en tu Google Drive...</i>');
               const tkData = await getTikTokData(fullUrl);
               if (tkData && tkData.videoUrl) {
-                await triggerDownload(botToken, chatId, repo, pat, tkData.videoUrl, target);
+                const payload = ${tkData.videoUrl}||;
+                await triggerDownload(botToken, chatId, repo, pat, payload, target);
               } else {
                 await triggerDownload(botToken, chatId, repo, pat, fullUrl, target);
               }
