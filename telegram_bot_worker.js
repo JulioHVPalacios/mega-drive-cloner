@@ -56,7 +56,7 @@ export default {
       const botToken = '8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A';
       const authChatId = String(env.AUTHORIZED_CHAT_ID || '1136933800');
       const repo = env.GITHUB_REPO || 'JulioHVPalacios/mega-drive-cloner';
-      const pat = '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';
+      const pat = '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';
       const geminiKey = (env.GEMINI_API_KEY || env.GEMINI_KEY || env.GOOGLE_AI_KEY || env.GOOGLE_API_KEY || '').trim();
       const serperKey = (env.SERPER_API_KEY || env.SERPER_KEY || '').trim();
 
