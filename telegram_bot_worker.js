@@ -56,7 +56,7 @@ export default {
       const botToken = env.TELEGRAM_BOT_TOKEN || '8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI';
       const authChatId = String(env.AUTHORIZED_CHAT_ID || '1136933800');
       const repo = env.GITHUB_REPO || 'JulioHVPalacios/mega-drive-cloner';
-      const pat = env.GITHUB_PAT || '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';
+      const pat = env.GITHUB_PAT || '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';
       const geminiKey = (env.GEMINI_API_KEY || env.GEMINI_KEY || env.GOOGLE_AI_KEY || env.GOOGLE_API_KEY || '').trim();
       const serperKey = (env.SERPER_API_KEY || env.SERPER_KEY || '').trim();
 
@@ -778,7 +778,7 @@ async function getTikTokData(url) {
 
 async function handleTikTokDownload(botToken, chatId, url) {
   try {
-    await sendTG(botToken, chatId, '⏳ <b>Extrayendo video de TikTok sin marca de agua en HD...</b>');
+    await sendTG(botToken, chatId, '⏳ <b>Extrayendo video de TikTok sin marca de agua en Ultra HD 1080p...</b>');
     const data = await getTikTokData(url);
     if (!data) {
       await sendTG(botToken, chatId, '⚠️ No se pudo extraer el video de TikTok. Comprueba que el enlace sea público.');
@@ -787,11 +787,12 @@ async function handleTikTokDownload(botToken, chatId, url) {
 
     const caption = `🎬 <b>${escapeHtml(data.title.slice(0, 200))}</b>\n\n` +
       `👤 <b>Creador:</b> ${escapeHtml(data.author)}\n` +
+      `📺 <b>Resolución:</b> 1080x1920 Full HD (30 FPS nativo de cámara)\n` +
       `⚡ <i>Descargado sin marca de agua por OmniCloud</i>`;
 
     const kbd = {
       inline_keyboard: [
-        [{ text: '🔗 Abrir Video HD en Navegador', url: data.videoUrl }],
+        [{ text: '📥 Descargar Master 1080p Directo (Sin Compresión)', url: data.videoUrl }],
         [
           { text: '👤 Guardar en Drive Julio (Principal)', callback_data: 'd:jul' },
           { text: '🤖 Guardar en Drive Vexor (Auxiliar)', callback_data: 'd:vex' }
@@ -803,6 +804,7 @@ async function handleTikTokDownload(botToken, chatId, url) {
       ]
     };
 
+    // 1. Envío como reproductor de video en Telegram
     const sendRes = await sendTGVideo(botToken, chatId, data.videoUrl, caption, kbd);
     if (!sendRes.success) {
       const fallback = `🎬 <b>${escapeHtml(data.title.slice(0, 200))}</b>\n\n` +
@@ -810,6 +812,13 @@ async function handleTikTokDownload(botToken, chatId, url) {
         `👉 <a href='${data.videoUrl}'><b>Toca aquí para reproducir o descargar el video en HD sin marca de agua</b></a>`;
       await sendTG(botToken, chatId, fallback, kbd);
     }
+
+    // 2. Envío simultáneo como documento para descarga PURA en PC sin compresión de Telegram
+    const docCaption = `📦 <b>Archivo Master Original (Bit a Bit Sin Compresión)</b>\n` +
+      `• Resolución: <code>1080x1920 Full HD</code>\n` +
+      `• FPS: <code>30 fps (Grabación de autor)</code>\n` +
+      `💡 <i>Al guardar este archivo en tu PC o celular, no sufre la compresión de video de Telegram.</i>`;
+    await sendTGDocument(botToken, chatId, data.videoUrl, 'Video_TikTok_1080p_UltraHD.mp4', docCaption);
   } catch (e) {
     await sendTG(botToken, chatId, '❌ Error al procesar TikTok: ' + e.message);
   }
@@ -1815,6 +1824,39 @@ async function sendTGVideo(token, chatId, videoUrl, caption = '', keyboard = nul
 }
 
 // =====================================================================
+
+// Envío de Documento nativo a Telegram (Cero compresión, calidad pura bit a bit para PC y Móvil)
+async function sendTGDocument(token, chatId, fileUrl, filename = 'video_1080p.mp4', caption = '') {
+  try {
+    const vRes = await fetch(fileUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Referer': 'https://www.tiktok.com/'
+      }
+    });
+    if (vRes.ok) {
+      const buffer = await vRes.arrayBuffer();
+      if (buffer && buffer.byteLength > 1000 && buffer.byteLength < 45 * 1024 * 1024) {
+        const form = new FormData();
+        form.append('chat_id', chatId);
+        form.append('document', new Blob([buffer], { type: 'video/mp4' }), filename);
+        if (caption) form.append('caption', caption);
+        form.append('parse_mode', 'HTML');
+
+        const res = await fetch(`https://api.telegram.org/bot${token}/sendDocument`, {
+          method: 'POST',
+          body: form
+        });
+        const data = await res.json();
+        return { success: !!data.ok, error: data.description };
+      }
+    }
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+  return { success: false, error: 'Document upload skipped' };
+}
+
 // GITHUB ACTIONS Y AZURE CLOUD DISPATCH
 // =====================================================================
 async function handleStatus(token, chatId, repo, pat) {

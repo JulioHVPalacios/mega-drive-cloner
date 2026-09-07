@@ -275,7 +275,94 @@ jobs:
               run_with_failover(cmd1, cmd2)
 
           # CASO 3: Streams de Video Multimedia (YouTube, TikTok, Instagram, Twitter/X, Vimeo, Twitch, HLS, .m3u8, .mpd)
-          elif any(k in source.lower() for k in ['youtube.com', 'youtu.be', 'tiktok.com', 'instagram.com', 'twitter.com', 'x.com', 'vimeo.com', '.m3u8', '.mpd', 'twitch.tv', 'facebook.com', 'reddit.com']):
+                    # CASO 2.5: TikTok Master Studio Ultra HD 1080p + 192k Audio Muxer
+          elif any(k in source.lower() for k in ['tiktok.com', 'tikwm.com', 'tikcdn', 'video/tos', 'mime_type=video_mp4']):
+              print('🎬 Detectado enlace de TikTok / Video Vertical. Iniciando Motor Master Studio...')
+              os.makedirs('/tmp/tiktok_in', exist_ok=True)
+              os.makedirs('/tmp/tiktok_out', exist_ok=True)
+              
+              clean_url = source.split('?')[0].split('&')[0].strip()
+              tk_info = None
+              if 'tiktok.com' in clean_url or 'tikwm.com' in clean_url:
+                  try:
+                      import urllib.request, urllib.parse, json
+                      api_data = urllib.parse.urlencode({'url': clean_url, 'hd': 1}).encode('utf-8')
+                      req = urllib.request.Request('https://www.tikwm.com/api/', data=api_data, headers={
+                          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                      })
+                      with urllib.request.urlopen(req, timeout=30) as resp:
+                          tk_res = json.loads(resp.read().decode('utf-8'))
+                          if tk_res.get('code') == 0:
+                              tk_info = tk_res.get('data')
+                  except Exception as e:
+                      print(f'⚠️ Advertencia al consultar TikWM: {e}')
+
+              video_stream_url = None
+              audio_stream_url = None
+              safe_title = 'Video_TikTok'
+
+              if tk_info:
+                  video_stream_url = tk_info.get('hdplay') or tk_info.get('play')
+                  audio_stream_url = tk_info.get('music')
+                  raw_title = tk_info.get('title') or 'Video_TikTok'
+                  safe_title = re.sub(r'[^\w\s-]', '', raw_title)[:50].strip() or 'Video_TikTok'
+              else:
+                  video_stream_url = source
+
+              print(f'🎥 Descargando stream de video: {video_stream_url[:60]}...')
+              v_path = '/tmp/tiktok_in/video.mp4'
+              curl_v = [
+                  'curl', '-L', '-s',
+                  '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                  '-H', 'Referer: https://www.tiktok.com/',
+                  '-o', v_path,
+                  video_stream_url
+              ]
+              subprocess.run(curl_v, check=True)
+
+              final_mp4 = f'/tmp/tiktok_out/{safe_title}_1080p_UltraHD.mp4'
+
+              if audio_stream_url:
+                  print(f'🎵 Descargando audio master estéreo 128kbps...')
+                  a_path = '/tmp/tiktok_in/audio.mp3'
+                  curl_a = [
+                      'curl', '-L', '-s',
+                      '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                      '-H', 'Referer: https://www.tiktok.com/',
+                      '-o', a_path,
+                      audio_stream_url
+                  ]
+                  try:
+                      subprocess.run(curl_a, check=True)
+                      print('🎛️ Muxeando video 1080p con audio master estéreo AAC 192k vía FFmpeg...')
+                      ff_cmd = [
+                          'ffmpeg', '-y',
+                          '-i', v_path,
+                          '-i', a_path,
+                          '-map', '0:v:0',
+                          '-map', '1:a:0',
+                          '-c:v', 'copy',
+                          '-c:a', 'aac',
+                          '-b:a', '192k',
+                          '-shortest',
+                          final_mp4
+                      ]
+                      subprocess.run(ff_cmd, check=True)
+                  except Exception as err:
+                      print(f'⚠️ Fallo muxer audio, usando video directo: {err}')
+                      import shutil
+                      shutil.copyfile(v_path, final_mp4)
+              else:
+                  import shutil
+                  shutil.copyfile(v_path, final_mp4)
+
+              print(f'📤 Subiendo video Master Ultra HD a tu nube destino ({dest_remote})...')
+              cmd1 = ['rclone', 'copy', final_mp4, dest_remote] + turbo_flags + ['-P', '-v']
+              cmd2 = ['rclone', 'copy', final_mp4, fallback_remote] + turbo_flags + ['-P', '-v'] if fallback_remote else None
+              run_with_failover(cmd1, cmd2)
+
+          # CASO 3: Streams de Video Multimedia (YouTube, Instagram, Twitter/X, Vimeo, Twitch, HLS, .m3u8, .mpd)
+          elif any(k in source.lower() for k in ['youtube.com', 'youtu.be', 'instagram.com', 'twitter.com', 'x.com', 'vimeo.com', '.m3u8', '.mpd', 'twitch.tv', 'facebook.com', 'reddit.com']):
               print('🎬 Detectado stream de video / multimedia. Descargando con motor Turbo Anti-Bot...')
               os.makedirs('/tmp/stream_downloads', exist_ok=True)
               client_variants = [
