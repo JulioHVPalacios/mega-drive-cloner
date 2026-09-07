@@ -56,7 +56,7 @@ export default {
       const botToken = '8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A';
       const authChatId = String(env.AUTHORIZED_CHAT_ID || '1136933800');
       const repo = env.GITHUB_REPO || 'JulioHVPalacios/mega-drive-cloner';
-      const pat = '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';
+      const pat = (env.GITHUB_PAT || '').trim();
       const geminiKey = (env.GEMINI_API_KEY || env.GEMINI_KEY || env.GOOGLE_AI_KEY || env.GOOGLE_API_KEY || '').trim();
       const serperKey = (env.SERPER_API_KEY || env.SERPER_KEY || '').trim();
 
@@ -1956,10 +1956,11 @@ async function triggerDownload(token, chatId, repo, pat, url, target) {
       return;
     }
     await sendTG(token, chatId, `🚀 <b>Transmitiendo orden a Azure...</b>\n🎯 Destino: <i>${target}</i>\nTu PC puede seguir apagada.`);
+    const authHeader = pat.startsWith('ghp_') ? `token ${pat}` : `Bearer ${pat}`;
     const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/descargador_universal.yml/dispatches`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${pat}`,
+        'Authorization': authHeader,
         'User-Agent': 'OmniCloud-Telegram-Bot',
         'Accept': 'application/vnd.github+json',
         'Content-Type': 'application/json'
@@ -1977,7 +1978,8 @@ async function triggerDownload(token, chatId, repo, pat, url, target) {
     if (res.status === 204) {
       await sendTG(token, chatId, '🎉 <b>¡Descarga en marcha a 1.5 Gbps!</b>\nLos servidores de Azure están transfiriendo tus archivos. Sonará una notificación push cuando finalice.');
     } else {
-      await sendTG(token, chatId, `⚠️ Error al iniciar descarga en GitHub (Status ${res.status}).`);
+      const errDetail = await res.text().catch(() => '');
+      await sendTG(token, chatId, `⚠️ Error al iniciar descarga en GitHub (Status ${res.status}): ${errDetail.slice(0, 100)}`);
     }
   } catch (e) {
     await sendTG(token, chatId, '❌ Error al conectar con GitHub: ' + e.message);
