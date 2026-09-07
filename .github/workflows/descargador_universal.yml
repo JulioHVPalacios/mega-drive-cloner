@@ -275,15 +275,29 @@ jobs:
               run_with_failover(cmd1, cmd2)
 
           # CASO 3: Streams de Video Multimedia (YouTube, TikTok, Instagram, Twitter/X, Vimeo, Twitch, HLS, .m3u8, .mpd)
-                    # CASO 2.5: TikTok Master Studio Ultra HD 1080p + 192k Audio Muxer
-          elif any(k in source.lower() for k in ['tiktok.com', 'tikwm.com', 'tikcdn', 'video/tos', 'mime_type=video_mp4']):
+                    elif any(k in source.lower() for k in ['tiktok.com', 'tikwm.com', 'tiktokcdn', 'video/tos', 'mime_type=video_mp4']) or '|' in source:
               print('🎬 Detectado enlace de TikTok / Video Vertical. Iniciando Motor Master Studio...')
               os.makedirs('/tmp/tiktok_in', exist_ok=True)
               os.makedirs('/tmp/tiktok_out', exist_ok=True)
               
-              clean_url = source.split('?')[0].split('&')[0].strip()
-              tk_info = None
-              if 'tiktok.com' in clean_url or 'tikwm.com' in clean_url:
+              video_stream_url = None
+              audio_stream_url = None
+              safe_title = 'Video_TikTok'
+
+              # Caso A: Paquete directo desde Cloudflare Worker (video_url|audio_url|title)
+              if '|' in source:
+                  parts = source.split('|')
+                  video_stream_url = parts[0].strip()
+                  if len(parts) > 1 and parts[1].strip():
+                      audio_stream_url = parts[1].strip()
+                  if len(parts) > 2 and parts[2].strip():
+                      safe_title = re.sub(r'[^\w\s-]', '', parts[2].strip())[:50].strip() or 'Video_TikTok'
+              # Caso B: URL directa de CDN TikTok
+              elif any(k in source.lower() for k in ['tiktokcdn', 'video/tos', 'mime_type=video_mp4']):
+                  video_stream_url = source.strip()
+              # Caso C: Enlace web de tiktok.com
+              else:
+                  clean_url = source.split('?')[0].split('&')[0].strip()
                   try:
                       import json
                       curl_api = subprocess.run([
@@ -292,23 +306,19 @@ jobs:
                           '-H', 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                           '-d', f'url={clean_url}&hd=1'
                       ], capture_output=True, text=True, timeout=30)
-                      tk_res = json.loads(curl_api.stdout)
-                      if tk_res.get('code') == 0:
-                          tk_info = tk_res.get('data')
+                      if curl_api.stdout and curl_api.stdout.strip().startswith('{'):
+                          tk_res = json.loads(curl_api.stdout)
+                          if tk_res.get('code') == 0:
+                              tk_info = tk_res.get('data')
+                              video_stream_url = tk_info.get('hdplay') or tk_info.get('play')
+                              audio_stream_url = tk_info.get('music')
+                              raw_title = tk_info.get('title') or 'Video_TikTok'
+                              safe_title = re.sub(r'[^\w\s-]', '', raw_title)[:50].strip() or 'Video_TikTok'
                   except Exception as e:
                       print(f'⚠️ Advertencia al consultar TikWM: {e}')
-
-              video_stream_url = None
-              audio_stream_url = None
-              safe_title = 'Video_TikTok'
-
-              if tk_info:
-                  video_stream_url = tk_info.get('hdplay') or tk_info.get('play')
-                  audio_stream_url = tk_info.get('music')
-                  raw_title = tk_info.get('title') or 'Video_TikTok'
-                  safe_title = re.sub(r'[^\w\s-]', '', raw_title)[:50].strip() or 'Video_TikTok'
-              else:
-                  raise RuntimeError('No se pudo extraer el stream de video directo de TikTok. Comprueba que el enlace sea público.')
+                  
+                  if not video_stream_url:
+                      video_stream_url = source
 
               print(f'🎥 Descargando stream de video: {video_stream_url[:60]}...')
               v_path = '/tmp/tiktok_in/video.mp4'
