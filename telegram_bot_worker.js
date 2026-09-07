@@ -223,8 +223,13 @@ export default {
           return new Response('OK', { status: 200 });
         }
 
-        // 3.11 Sincronizar Megapack
-        if (text === '🔄 Sincronizar Megapack' || norm === '/sync' || norm.includes('sincroniz')) {
+        // 3.11 Sincronizar y Monitoreo Universal (/vigilar, /vigiladas, /sync)
+        if (text === '🛰️ Vigilante 24/7' || norm === '/vigilar' || norm === '/vigiladas' || norm.startsWith('/vigilar ') || norm.startsWith('vigilar ')) {
+          await handleWatchCommand(botToken, chatId, text, repo, pat);
+          return new Response('OK', { status: 200 });
+        }
+
+        if (text === '🔄 Sincronizar Megapack' || norm === '/sync' || norm === '/sincronizar' || norm.includes('sincroniz')) {
           await triggerSync(botToken, chatId, repo, pat);
           return new Response('OK', { status: 200 });
         }
@@ -1892,15 +1897,135 @@ async function handleStatus(token, chatId, repo, pat) {
   }
 }
 
+async function handleWatchCommand(token, chatId, text, repo, pat) {
+  try {
+    const raw = text.replace(/^\/?[vV]igilar\s*/i, '').trim();
+    if (!raw || text.trim() === '/vigilar' || text.trim() === '/vigiladas' || text.trim() === '🛰️ Vigilante 24/7') {
+      const infoMsg = '🛰️ <b>SISTEMA UNIVERSAL DE MONITOREO Y AUTO-SINCRONIZACIÓN 24/7</b>\n\n' +
+        'El motor en Azure vigila continuamente estas carpetas compartidas:\n\n' +
+        '1️⃣ <b>Megapack Programación Completo (825 GB)</b>\n' +
+        '   📂 Destino: <code>midrive:MEGAPACK_PROGRAMACION_COMPLETO</code>\n' +
+        '   🆔 ID: <code>1TCTh_B3E_ztPGOznWL75yrymywJrKLJl</code>\n\n' +
+        '2️⃣ <b>Biblioteca Libros Programación PDF (7.7 GB)</b>\n' +
+        '   📂 Destino: <code>midrive:Carp</code>\n' +
+        '   🆔 ID: <code>1hdSylyYGvshO7SLYz7y5ZbYEo67WKFB3</code>\n\n' +
+        '3️⃣ <b>Cursos Reparación Hardware, PC y TVs (11.7 GB)</b>\n' +
+        '   📂 Destino: <code>midrive:Vide</code>\n' +
+        '   🆔 ID: <code>1oRTw1rJ9Gu1NyX2vy5zKQFg0KoOtAYH9</code>\n\n' +
+        '➕ <b>¿CÓMO VIGILAR CUALQUIER OTRA CARPETA COMPARTIDA?</b>\n' +
+        'Envía un mensaje con el formato:\n' +
+        '<code>/vigilar [enlace_de_drive] [carpeta_destino] [Nombre Opcional]</code>\n\n' +
+        '👉 <i>Ejemplo:</i>\n' +
+        '<code>/vigilar https://drive.google.com/drive/folders/1ABCxyz... Cursos_Linux Cursos Nuevos Linux</code>\n\n' +
+        '🛡️ <b>Garantía de Seguridad:</b> Modo 100% Aditivo (CERO BORRADOS). Si el creador sube algo nuevo, el vigilante lo descarga directo a tu Drive.';
+
+      const kbd = {
+        inline_keyboard: [
+          [{ text: '🔄 Sincronizar Todo en Azure Ahora', callback_data: 'cmd:sync' }],
+          [{ text: '📊 Ver Estado de Servidores', callback_data: 'cmd:status' }]
+        ]
+      };
+      await sendTG(token, chatId, infoMsg, kbd);
+      return;
+    }
+
+    if (!pat) {
+      await sendTG(token, chatId, '⚠️ Se requiere GITHUB_PAT para registrar carpetas dinámicamente en GitHub.');
+      return;
+    }
+
+    const idMatch = raw.match(/[-\w]{25,}/);
+    if (!idMatch) {
+      await sendTG(token, chatId, '❌ No se pudo detectar un ID válido de Google Drive en el enlace.\nFormato: <code>/vigilar [enlace_drive] [carpeta_destino] [Nombre]</code>');
+      return;
+    }
+    const folderId = idMatch[0];
+
+    const cleanArgs = raw.replace(idMatch[0], '').replace(/https?:\/\/[^\s]+/g, '').trim().split(/\s+/).filter(Boolean);
+    const destFolder = cleanArgs.length > 0 ? cleanArgs[0].replace(/[\\/:*?"<>|]/g, '') : `Vigilada_${folderId.slice(0, 6)}`;
+    const descName = cleanArgs.length > 1 ? cleanArgs.slice(1).join(' ') : destFolder;
+
+    await sendTG(token, chatId, `⏳ <b>Registrando nueva carpeta en el vigilante 24/7...</b>\n📁 <b>Nombre:</b> ${descName}\n🎯 <b>Destino:</b> <code>midrive:${destFolder}</code>\n🆔 <b>ID:</b> <code>${folderId}</code>`);
+
+    const authHeader = pat.startsWith('ghp_') ? `token ${pat}` : `Bearer ${pat}`;
+    const getRes = await fetch(`https://api.github.com/repos/${repo}/contents/sync_registry.json`, {
+      headers: {
+        'Authorization': authHeader,
+        'User-Agent': 'OmniCloud-Telegram-Bot',
+        'Accept': 'application/vnd.github+json'
+      }
+    });
+
+    let sha = '';
+    let registryData = { monitored_folders: [] };
+
+    if (getRes.status === 200) {
+      const getJson = await getRes.json();
+      sha = getJson.sha;
+      const decoded = atob(getJson.content.replace(/\n/g, ''));
+      try {
+        registryData = JSON.parse(decoded);
+      } catch (e) {}
+    }
+
+    let existing = registryData.monitored_folders.find(f => f.source_id === folderId);
+    if (existing) {
+      existing.dest_folder = destFolder;
+      existing.name = descName;
+      existing.active = true;
+    } else {
+      registryData.monitored_folders.push({
+        id: 'carpeta_' + Date.now(),
+        name: descName,
+        source_id: folderId,
+        dest_folder: destFolder,
+        dest_remote: 'midrive',
+        active: true
+      });
+    }
+
+    const updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(registryData, null, 2))));
+    const putRes = await fetch(`https://api.github.com/repos/${repo}/contents/sync_registry.json`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': authHeader,
+        'User-Agent': 'OmniCloud-Telegram-Bot',
+        'Accept': 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        message: `feat(watchdog): vigilar carpeta ${descName}`,
+        content: updatedContent,
+        sha: sha || undefined,
+        branch: 'main'
+      })
+    });
+
+    if (putRes.status === 200 || putRes.status === 201) {
+      await sendTG(token, chatId, `🎉 <b>¡CARPETA REGISTRADA CON ÉXITO!</b>\n\n` +
+        `📁 <b>Colección:</b> ${descName}\n` +
+        `📂 <b>Destino en tu Drive:</b> <code>midrive:${destFolder}</code>\n` +
+        `🆔 <b>ID Origen:</b> <code>${folderId}</code>\n\n` +
+        `🚀 <i>Disparando auto-sincronizador en Azure para auditar e inyectar novedades...</i>`);
+      await triggerSync(token, chatId, repo, pat);
+    } else {
+      const errTxt = await putRes.text().catch(() => '');
+      await sendTG(token, chatId, `⚠️ Error al guardar en GitHub (Status ${putRes.status}): ${errTxt.slice(0, 100)}`);
+    }
+  } catch (e) {
+    await sendTG(token, chatId, '❌ Error en /vigilar: ' + e.message);
+  }
+}
+
 async function triggerSync(token, chatId, repo, pat) {
   try {
     if (!pat) {
       await sendTG(token, chatId, '⚠️ Para disparar tareas automáticas de sincronización desde el celular necesitas agregar GITHUB_PAT en Cloudflare.');
       return;
     }
-    await sendTG(token, chatId, '🔄 <b>Escaneando origen compartido en Azure...</b>\nBuscando si el creador subió cursos o actualizaciones nuevas.');
+    await sendTG(token, chatId, '🔄 <b>Escaneando carpetas compartidas en Azure...</b>\nAuditará Megapack (825 GB), Libros PDF y Cursos de Reparación.');
     const authHeader = pat.startsWith('ghp_') ? `token ${pat}` : `Bearer ${pat}`;
-    const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/sincronizador_automatico_megapack.yml/dispatches`, {
+    const res = await fetch(`https://api.github.com/repos/${repo}/actions/workflows/sincronizador_universal_carpetas.yml/dispatches`, {
       method: 'POST',
       headers: {
         'Authorization': authHeader,
@@ -1908,10 +2033,17 @@ async function triggerSync(token, chatId, repo, pat) {
         'Accept': 'application/vnd.github+json',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ ref: 'main' })
+      body: JSON.stringify({
+        ref: 'main',
+        inputs: {
+          target_folder: 'all',
+          dry_run: false,
+          destination_account: 'midrive'
+        }
+      })
     });
     if (res.status === 204) {
-      await sendTG(token, chatId, '🛰️ <b>¡Auto-sincronizador lanzado en Azure!</b>\nComparará el origen contra tus 825 GB. Si hay algo nuevo, lo inyectará sin tocar ni borrar nada de lo tuyo y te avisará.');
+      await sendTG(token, chatId, '🛰️ <b>¡Universal Watchdog Activado en Azure!</b>\nComparando orígenes contra tus carpetas. Si hay algo nuevo, lo inyectará en modo aditivo (CERO BORRADOS) y te enviará un reporte aquí.');
     } else {
       const errText = await res.text().catch(() => '');
       await sendTG(token, chatId, `⚠️ Respuesta de GitHub (Status ${res.status}): ${errText.slice(0, 100)}`);

@@ -1,0 +1,28 @@
+{
+  "monitored_folders": [
+    {
+      "id": "megapack_programacion",
+      "name": "Megapack Programacion Completo (825 GB)",
+      "source_id": "1TCTh_B3E_ztPGOznWL75yrymywJrKLJl",
+      "dest_folder": "MEGAPACK_PROGRAMACION_COMPLETO",
+      "dest_remote": "midrive",
+      "active": true
+    },
+    {
+      "id": "libros_programacion_pdf",
+      "name": "Biblioteca Libros Programacion PDF (Carp - 7.7 GB)",
+      "source_id": "1hdSylyYGvshO7SLYz7y5ZbYEo67WKFB3",
+      "dest_folder": "Carp",
+      "dest_remote": "midrive",
+      "active": true
+    },
+    {
+      "id": "cursos_reparacion_hardware",
+      "name": "Cursos Reparacion PC, Laptops y TVs (Vide - 11.7 GB)",
+      "source_id": "1oRTw1rJ9Gu1NyX2vy5zKQFg0KoOtAYH9",
+      "dest_folder": "Vide",
+      "dest_remote": "midrive",
+      "active": true
+    }
+  ]
+}

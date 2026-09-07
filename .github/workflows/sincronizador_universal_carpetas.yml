@@ -1,0 +1,126 @@
+﻿name: 🔄 Sincronizador Universal y Watchdog Multi-Carpeta (24/7 en Azure)
+
+on:
+  schedule:
+    # Se ejecuta dos veces al día de forma 100% desatendida (PC Apagada):
+    # 1) 04:00 AM hora local Perú/Colombia/Ecuador (09:00 UTC)
+    # 2) 12:00 PM mediodía hora local (17:00 UTC)
+    - cron: '0 9,17 * * *'
+  workflow_dispatch:
+    inputs:
+      target_folder:
+        description: 'Carpeta objetivo a verificar y sincronizar'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - 'all'
+          - 'megapack_programacion'
+          - 'libros_programacion_pdf'
+          - 'cursos_reparacion_hardware'
+      dry_run:
+        description: 'Modo Auditoría (Dry-Run: solo detectar cambios sin descargar)'
+        required: false
+        default: false
+        type: boolean
+      destination_account:
+        description: 'Cuenta destino de Google Drive'
+        required: true
+        default: 'midrive'
+        type: choice
+        options:
+          - 'midrive'
+          - 'midrive2'
+
+jobs:
+  vigilar_y_sincronizar:
+    name: 🛰️ Universal Watchdog Multi-Carpeta (PC Apagada)
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: 📥 Clonar Repositorio con Registro
+        uses: actions/checkout@v4
+
+      - name: ⚡ Optimización Nuclear de Red (Google BBR + Ventana TCP 64MB)
+        run: |
+          sudo sysctl -w net.core.default_qdisc=fq || true
+          sudo sysctl -w net.ipv4.tcp_congestion_control=bbr || true
+          sudo sysctl -w net.core.rmem_max=67108864 || true
+          sudo sysctl -w net.core.wmem_max=67108864 || true
+          sudo sysctl -w net.ipv4.tcp_rmem="4096 87380 67108864" || true
+          sudo sysctl -w net.ipv4.tcp_wmem="4096 65536 67108864" || true
+          sudo sysctl -w net.ipv4.tcp_window_scaling=1 || true
+          sudo sysctl -w net.ipv4.tcp_slow_start_after_idle=0 || true
+          echo "🚀 Algoritmo de congestión activo:"
+          sysctl net.ipv4.tcp_congestion_control
+
+      - name: 🛠️ Instalar y Configurar Rclone Oficial
+        run: |
+          sudo -v ; curl https://rclone.org/install.sh | sudo bash
+          mkdir -p ~/.config/rclone
+          cat << 'EOF' > ~/.config/rclone/rclone.conf
+          ${{ secrets.RCLONE_CONFIG }}
+          EOF
+          echo "✅ Rclone configurado y listo."
+
+      - name: 🐍 Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 🛰️ Ejecutar Universal Watchdog Engine
+        env:
+          TELEGRAM_BOT_TOKEN: "8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A"
+          TELEGRAM_CHAT_ID: "1136933800"
+        run: |
+          TARGET="${{ inputs.target_folder }}"
+          if [ -z "$TARGET" ]; then
+            TARGET="all"
+          fi
+
+          DEST="${{ inputs.destination_account }}"
+          if [ -z "$DEST" ]; then
+            DEST="midrive"
+          fi
+
+          DRY=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY="--dry-run"
+          fi
+
+          echo "Ejecutando universal_watchdog.py para objetivo: $TARGET en destino: $DEST (dry-run: $DRY)"
+          python3 universal_watchdog.py \
+            --registry sync_registry.json \
+            --target "$TARGET" \
+            --dest "$DEST" \
+            $DRY
+
+      - name: 🚨 Alerta de Falla en Universal Watchdog a Telegram
+        if: failure()
+        run: |
+          python3 -c "import sys, textwrap; exec(textwrap.dedent(sys.stdin.read()))" << 'EOF'
+          import os, json, urllib.request
+
+          token = "8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A"
+          chat_id = "1136933800"
+
+          html_msg = (
+              "🚨 <b>ALERTA EN UNIVERSAL WATCHDOG</b>\n\n"
+              "El vigilante multi-carpeta en Azure detectó un error o interrupción temporal al consultar Google Drive.\n"
+              "🛡️ <i>Tus archivos existentes están 100% seguros e intactos. El sistema reintentará en el siguiente horario automático.</i>"
+          )
+
+          data = json.dumps({
+              "chat_id": chat_id,
+              "text": html_msg,
+              "parse_mode": "HTML"
+          }).encode("utf-8")
+
+          url = f"https://api.telegram.org/bot{token}/sendMessage"
+          req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+          try:
+              urllib.request.urlopen(req, timeout=10)
+          except Exception:
+              pass
+          EOF
