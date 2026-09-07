@@ -273,9 +273,8 @@ jobs:
               cmd1 = ['rclone', 'copy', '/tmp/mega_downloads', dest_remote] + turbo_flags + ['-P', '-v']
               cmd2 = ['rclone', 'copy', '/tmp/mega_downloads', fallback_remote] + turbo_flags + ['-P', '-v'] if fallback_remote else None
               run_with_failover(cmd1, cmd2)
-
-          # CASO 3: Streams de Video Multimedia (YouTube, TikTok, Instagram, Twitter/X, Vimeo, Twitch, HLS, .m3u8, .mpd)
-                    elif any(k in source.lower() for k in ['tiktok.com', 'tikwm.com', 'tiktokcdn', 'video/tos', 'mime_type=video_mp4']) or '|' in source:
+          # CASO 2.5: TikTok Master Studio Ultra HD 1080p + 192k Audio Muxer
+          elif any(k in source.lower() for k in ['tiktok.com', 'tikwm.com', 'tiktokcdn', 'video/tos', 'mime_type=video_mp4']) or '|' in source:
               print('🎬 Detectado enlace de TikTok / Video Vertical. Iniciando Motor Master Studio...')
               os.makedirs('/tmp/tiktok_in', exist_ok=True)
               os.makedirs('/tmp/tiktok_out', exist_ok=True)
