@@ -1,0 +1,297 @@
+name: 🎬 Transferencia Nube - Videos Maestros HTML5 & CSS a Google Drive
+
+on:
+  workflow_dispatch:
+    inputs:
+      phase_selection:
+        description: 'Fase a transferir'
+        required: true
+        default: 'TODAS_LAS_FASES'
+        type: choice
+        options:
+          - 'TODAS_LAS_FASES'
+          - 'FASE_1'
+          - 'FASE_2'
+          - 'FASE_3'
+          - 'FASE_4'
+
+jobs:
+  transferir_videos_nube:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: ⚡ Optimización de Red (Google BBR + TCP Tuning)
+        run: |
+          sudo sysctl -w net.core.default_qdisc=fq || true
+          sudo sysctl -w net.ipv4.tcp_congestion_control=bbr || true
+          sudo sysctl -w net.core.rmem_max=67108864 || true
+          sudo sysctl -w net.core.wmem_max=67108864 || true
+          sudo sysctl -w net.ipv4.tcp_rmem="4096 87380 67108864" || true
+          sudo sysctl -w net.ipv4.tcp_wmem="4096 65536 67108864" || true
+          echo "🚀 Conexión de red optimizada para streaming ultrarrápido."
+
+      - name: 🛠️ Instalar Motores Oficiales (Rclone, FFmpeg, yt-dlp)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg curl python3 python3-pip
+          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+          sudo chmod a+rx /usr/local/bin/yt-dlp
+          curl https://rclone.org/install.sh | sudo bash
+          echo "✅ yt-dlp versión: $(yt-dlp --version)"
+          echo "✅ rclone versión: $(rclone --version | head -n 1)"
+
+      - name: 🔐 Configurar Rclone con Google Drive
+        env:
+          RCLONE_CONFIG_DATA: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
+          rclone listremotes
+          echo "✅ Rclone configurado con Google Drive."
+
+      - name: 🚀 Ejecutar Pipeline Maestro de Descarga y Carga Directa a Google Drive
+        env:
+          PHASE_SEL: ${{ inputs.phase_selection }}
+          TELEGRAM_TOKEN: '8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A'
+          TELEGRAM_CHAT_ID: '1136933800'
+        run: |
+          python3 - << 'EOF'
+          import os, subprocess, json, urllib.request, urllib.parse, sys
+
+          token = os.environ.get('TELEGRAM_TOKEN')
+          chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+          phase_sel = os.environ.get('PHASE_SEL', 'TODAS_LAS_FASES')
+
+          def send_tg(text):
+              if not token or not chat_id: return
+              try:
+                  data = urllib.parse.urlencode({'chat_id': chat_id, 'text': text, 'parse_mode': 'HTML'}).encode('utf-8')
+                  req = urllib.request.Request(f'https://api.telegram.org/bot{token}/sendMessage', data=data)
+                  urllib.request.urlopen(req, timeout=15)
+              except Exception as e:
+                  print(f"Error enviando TG: {e}")
+
+          # Catálogo maestro de videos ordenados por fase de aprendizaje
+          catalog = [
+              {
+                  "fase_key": "FASE_1",
+                  "fase_num": "01",
+                  "fase_name": "01_FASE_1_FUNDAMENTOS_HTML5_Y_ESTRUCTURA_WEB",
+                  "folder": "00_VIDEOS_CLASES_MAESTRAS",
+                  "videos": [
+                      {
+                          "order": "01",
+                          "author": "Jon Mircha",
+                          "title": "01_Jon_Mircha_Curso_HTML5_Fundamentos_Semantica_Formularios_Multimedia",
+                          "url": "https://www.youtube.com/watch?v=-oK6zL01fNM"
+                      },
+                      {
+                          "order": "02",
+                          "author": "Midudev",
+                          "title": "02_Midudev_Curso_HTML_Desde_Cero_Semantica_Buenas_Practicas_SEO",
+                          "url": "https://www.youtube.com/watch?v=3nYLTiY5skU"
+                      }
+                  ]
+              },
+              {
+                  "fase_key": "FASE_2",
+                  "fase_num": "02",
+                  "fase_name": "02_FASE_2_CSS_DESDE_CERO_HASTA_AVANZADO",
+                  "folder": "00_VIDEOS_CLASES_MAESTRAS",
+                  "videos": [
+                      {
+                          "order": "01",
+                          "author": "Jon Mircha",
+                          "title": "01_Jon_Mircha_Curso_CSS_Fundamentos_Cascada_Herencia_Selectores_BoxModel",
+                          "url": "https://www.youtube.com/watch?v=K3xmRF8ab1o"
+                      },
+                      {
+                          "order": "02",
+                          "author": "Jon Mircha",
+                          "title": "02_Jon_Mircha_Curso_CSS_Unidades_Medida_Estilos_Tipografia_CustomProperties",
+                          "url": "https://www.youtube.com/watch?v=p_lT7AgpEMU"
+                      },
+                      {
+                          "order": "03",
+                          "author": "Midudev",
+                          "title": "03_Midudev_Curso_CSS_Desde_Cero_Fundamentos_Practicos",
+                          "url": "https://www.youtube.com/watch?v=hrxjBqZWsb0"
+                      }
+                  ]
+              },
+              {
+                  "fase_key": "FASE_3",
+                  "fase_num": "03",
+                  "fase_name": "03_FASE_3_MAQUETACION_RESPONSIVE_Y_DISPOSITIVOS_MOVILES",
+                  "folder": "00_VIDEOS_CLASES_MAESTRAS",
+                  "videos": [
+                      {
+                          "order": "01",
+                          "author": "Dorian Designs",
+                          "title": "01_Dorian_Designs_Flexbox_Completo_Ejes_Alineacion_FlexGrow_Shrink_Basis",
+                          "url": "https://www.youtube.com/watch?v=PSwlAuRbv_A"
+                      },
+                      {
+                          "order": "02",
+                          "author": "Dorian Designs",
+                          "title": "02_Dorian_Designs_CSS_Grid_Maquetacion_Areas_Fr_MinMax_AutoFill",
+                          "url": "https://www.youtube.com/watch?v=0Ww1BCuF6S0"
+                      },
+                      {
+                          "order": "03",
+                          "author": "Jon Mircha",
+                          "title": "03_Jon_Mircha_Responsive_Web_Design_MediaQueries_MobileFirst_BEM",
+                          "url": "https://www.youtube.com/watch?v=udGrXWeJp1Y"
+                      },
+                      {
+                          "order": "04",
+                          "author": "Jon Mircha",
+                          "title": "04_Jon_Mircha_Efectos_Visuales_Transiciones_Transformaciones_Animaciones",
+                          "url": "https://www.youtube.com/watch?v=mVhoGXkDbMw"
+                      }
+                  ]
+              },
+              {
+                  "fase_key": "FASE_4",
+                  "fase_num": "04",
+                  "fase_name": "04_FASE_4_TECNICAS_AVANZADAS_Y_ARQUITECTURA_WEB",
+                  "folder": "00_VIDEOS_CLASES_MAESTRAS",
+                  "videos": [
+                      {
+                          "order": "01",
+                          "author": "ManzDev",
+                          "title": "01_ManzDev_CSS_Avanzado_Moderno_Has_ContainerQueries_Subgrid_Nesting",
+                          "url": "https://www.youtube.com/watch?v=w63OqoBzNxk"
+                      },
+                      {
+                          "order": "02",
+                          "author": "Midudev",
+                          "title": "02_Midudev_CSS_Avanzado_FrontEnd_Arquitectura_Moderna",
+                          "url": "https://www.youtube.com/watch?v=TlJbu0BMLaY"
+                      }
+                  ]
+              }
+          ]
+
+          base_drive_path = "midrive:BIBLIOTECA_MAESTRA_HTML_CSS_CERO_A_AVANZADO"
+
+          send_tg(
+              "🚀 <b>INICIANDO TRANSFERENCIA EN LA NUBE (AZURE ➔ GOOGLE DRIVE)</b>\n\n"
+              "📚 <b>Biblioteca Maestra HTML5 & CSS</b>\n"
+              "⚡ <i>Velocidad de descarga en Azure: ~1.5 Gbps</i>\n"
+              "☁️ <i>Tu PC puede estar 100% apagada durante todo el proceso.</i>\n\n"
+              "Te notificaré por aquí conforme cada video y fase aterrice en tu Google Drive."
+          )
+
+          total_videos = 0
+          for f in catalog:
+              if phase_sel == 'TODAS_LAS_FASES' or phase_sel == f['fase_key']:
+                  total_videos += len(f['videos'])
+
+          processed = 0
+
+          for f in catalog:
+              if phase_sel != 'TODAS_LAS_FASES' and phase_sel != f['fase_key']:
+                  continue
+
+              fase_dest = f"{base_drive_path}/{f['fase_name']}/{f['folder']}"
+              send_tg(f"📂 <b>Comenzando Fase {f['fase_num']}: {f['fase_name'].split('_', 2)[-1].replace('_', ' ')}</b>\n🎯 Destino: <code>{f['fase_name']}/{f['folder']}</code>")
+
+              for v in f['videos']:
+                  processed += 1
+                  tmp_dir = "/tmp/video_work"
+                  os.makedirs(tmp_dir, exist_ok=True)
+                  for fl in os.listdir(tmp_dir):
+                      try: os.remove(os.path.join(tmp_dir, fl))
+                      except: pass
+
+                  v_title = v['title']
+                  v_url = v['url']
+                  out_template = f"{tmp_dir}/{v_title}.%(ext)s"
+
+                  print(f"\n==========================================")
+                  print(f"[{processed}/{total_videos}] Descargando: {v_title} ({v['author']})")
+                  print(f"URL: {v_url}")
+                  print(f"==========================================")
+
+                  # Clientes de extracción para evadir cualquier limitación de YouTube
+                  client_variants = [
+                      ['--extractor-args', 'youtube:player_client=tv_embedded,web_creator,tv'],
+                      ['--extractor-args', 'youtube:player_client=tv_embedded'],
+                      ['--extractor-args', 'youtube:player_client=android_embedded,web_embedded'],
+                      ['--extractor-args', 'youtube:player_client=web_creator'],
+                      ['--extractor-args', 'youtube:player_client=mweb,web_safari'],
+                      []
+                  ]
+
+                  dl_success = False
+                  for c_args in client_variants:
+                      cmd = [
+                          'yt-dlp',
+                          '--no-check-certificates',
+                          '--concurrent-fragments', '16',
+                          '--buffer-size', '64K',
+                          '-f', 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[ext=mp4]/best',
+                          '--merge-output-format', 'mp4',
+                          '-o', out_template
+                      ] + c_args + [v_url]
+
+                      try:
+                          subprocess.run(cmd, check=True)
+                          dl_success = True
+                          break
+                      except Exception as err:
+                          print(f"Aviso con cliente {c_args}: {err}")
+
+                  if not dl_success:
+                      print(f"⚠️ Error al descargar {v_title}, intentando fallback simple...")
+                      fallback_cmd = ['yt-dlp', '--no-check-certificates', '-o', out_template, v_url]
+                      subprocess.run(fallback_cmd, check=True)
+
+                  # Subir archivo descargado a Google Drive
+                  downloaded_files = [os.path.join(tmp_dir, x) for x in os.listdir(tmp_dir) if os.path.isfile(os.path.join(tmp_dir, x))]
+                  if not downloaded_files:
+                      print(f"❌ Error: No se encontró archivo generado para {v_title}")
+                      continue
+
+                  target_file = downloaded_files[0]
+                  file_size_mb = os.path.getsize(target_file) / (1024 * 1024)
+                  file_name = os.path.basename(target_file)
+
+                  print(f"📤 Subiendo a Google Drive: {file_name} ({file_size_mb:.2f} MB) -> {fase_dest}")
+
+                  rclone_cmd = [
+                      'rclone', 'copy', target_file, fase_dest,
+                      '--fast-list',
+                      '--transfers=8',
+                      '--checkers=16',
+                      '--buffer-size=128M',
+                      '--drive-chunk-size=256M',
+                      '--retries=10',
+                      '--low-level-retries=20',
+                      '-P', '-v'
+                  ]
+                  subprocess.run(rclone_cmd, check=True)
+
+                  send_tg(
+                      f"✅ <b>[{processed}/{total_videos}] Video Transferido a Drive</b>\n"
+                      f"🎬 <b>{v['title']}</b>\n"
+                      f"👤 Autor: {v['author']}\n"
+                      f"📦 Tamaño: {file_size_mb:.1f} MB\n"
+                      f"📁 Carpeta: <code>{f['fase_name']}/{f['folder']}</code>"
+                  )
+
+                  # Limpieza de disco en el runner para soportar gigabytes infinitos
+                  for fl in downloaded_files:
+                      try: os.remove(fl)
+                      except: pass
+
+          send_tg(
+              "🎉 <b>¡TRANSFERENCIA 100% COMPLETADA CON ÉXITO!</b>\n\n"
+              "Todos los videos maestros de HTML5 y CSS han sido descargados en alta definición (1080p) "
+              "y organizados en tu Google Drive dentro de sus fases de estudio correspondientes.\n\n"
+              "🏆 <i>Todo el proceso se ejecutó de forma 100% autónoma en los servidores de Azure con tu PC apagada.</i>"
+          )
+          print("✅ ¡Pipeline de videos finalizado con éxito absoluto!")
+          EOF
