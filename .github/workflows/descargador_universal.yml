@@ -59,6 +59,12 @@ jobs:
           echo "🚀 Algoritmo de congestión activo:"
           sysctl net.ipv4.tcp_congestion_control
 
+      - name: 🌐 Configurar Cloudflare WARP Anycast (Bypass Bloqueo Datacenter Azure)
+        uses: fscarmen/warp-on-actions@v1.4
+        with:
+          stack: dual
+          mode: client
+
       - name: 🛠️ Instalar Motores de Alta Velocidad Oficiales (Rclone, Aria2, Megatools, yt-dlp)
         run: |
           sudo apt-get update -y
@@ -402,9 +408,9 @@ jobs:
               print('🎬 Detectado stream de video / multimedia. Descargando con motor Turbo Anti-Bot...')
               os.makedirs('/tmp/stream_downloads', exist_ok=True)
               client_variants = [
+                  ['--extractor-args', 'youtube:player_client=android_vr,android'],
+                  ['--extractor-args', 'youtube:player_client=ios,tv_embedded'],
                   ['--extractor-args', 'youtube:player_client=tv_embedded,web_creator,tv'],
-                  ['--extractor-args', 'youtube:player_client=tv_embedded'],
-                  ['--extractor-args', 'youtube:player_client=web_creator'],
                   ['--extractor-args', 'youtube:player_client=android_embedded,web_embedded'],
                   ['--extractor-args', 'youtube:player_client=mweb,web_safari'],
                   []
