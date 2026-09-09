@@ -303,11 +303,21 @@ jobs:
                   v_title = v['title']
                   v_url = v['url']
 
-                  # 1. Comprobar si ya existe en Google Drive
-                  chk = subprocess.run(['rclone', 'lsf', f"{fase_dest}/{v_title}.mp4"], capture_output=True, text=True)
-                  if chk.returncode == 0 and v_title in chk.stdout:
-                      print(f"[{processed}/{total_videos}] YA EN DRIVE: {v_title}. Omitiendo.")
-                      send_tg(f"⏩ <b>[{processed}/{total_videos}] Ya en Drive</b>: <code>{v_title}</code>")
+                  # 1. Comprobar si ya existe en Google Drive con calidad 1080p verificada
+                  chk = subprocess.run(['rclone', 'size', '--json', f"{fase_dest}/{v_title}.mp4"], capture_output=True, text=True)
+                  is_complete = False
+                  if chk.returncode == 0:
+                      try:
+                          sz_data = json.loads(chk.stdout)
+                          # Solo se omite si el archivo pesa mas de 400MB (1080p real verificado)
+                          if sz_data.get('bytes', 0) > 400 * 1024 * 1024:
+                              is_complete = True
+                      except Exception:
+                          pass
+
+                  if is_complete:
+                      print(f"[{processed}/{total_videos}] YA EN DRIVE (1080p COMPLETO): {v_title}. Omitiendo.")
+                      send_tg(f"⏩ <b>[{processed}/{total_videos}] Ya en Drive (1080p)</b>: <code>{v_title}</code>")
                       continue
 
                   tmp_dir = "/tmp/video_work"
