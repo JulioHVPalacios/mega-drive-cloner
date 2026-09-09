@@ -31,15 +31,21 @@ jobs:
           sudo sysctl -w net.ipv4.tcp_wmem="4096 65536 67108864" || true
           echo "🚀 Conexión de red optimizada para streaming ultrarrápido."
 
+      - name: 🦖 Instalar Deno JS Runtime (EJS Challenge Solver)
+        run: |
+          curl -fsSL https://deno.land/install.sh | sh
+          echo "/home/runner/.deno/bin" >> $GITHUB_PATH
+          export PATH="/home/runner/.deno/bin:$PATH"
+          deno --version
+
       - name: 🛠️ Instalar Motores Oficiales (Rclone, FFmpeg, yt-dlp)
         run: |
           sudo apt-get update -y
           sudo apt-get install -y ffmpeg curl python3 python3-pip
-          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-          sudo chmod a+rx /usr/local/bin/yt-dlp
+          python3 -m pip install --upgrade --no-cache-dir "yt-dlp[default]"
           curl https://rclone.org/install.sh | sudo bash
-          echo "✅ yt-dlp versión: $(yt-dlp --version)"
-          echo "✅ rclone versión: $(rclone --version | head -n 1)"
+          echo "yt-dlp version: $(yt-dlp --version)"
+          echo "rclone version: $(rclone --version | head -n 1)"
 
       - name: 🔐 Configurar Rclone con Google Drive
         env:
@@ -217,10 +223,10 @@ jobs:
 
                   # Clientes de extracción para evadir cualquier limitación de YouTube
                   client_variants = [
-                      ['--extractor-args', 'youtube:player_client=tv_embedded,web_creator,tv'],
+                      ['--extractor-args', 'youtube:player_client=android_vr,android'],
+                      ['--extractor-args', 'youtube:player_client=android'],
+                      ['--extractor-args', 'youtube:player_client=ios'],
                       ['--extractor-args', 'youtube:player_client=tv_embedded'],
-                      ['--extractor-args', 'youtube:player_client=android_embedded,web_embedded'],
-                      ['--extractor-args', 'youtube:player_client=web_creator'],
                       ['--extractor-args', 'youtube:player_client=mweb,web_safari'],
                       []
                   ]
