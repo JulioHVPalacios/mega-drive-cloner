@@ -11,7 +11,7 @@ echo  bot corra directamente desde tu computadora (bot_telegram_local.py).
 echo =====================================================================
 echo.
 
-set "BOT_TOKEN=8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI"
+set "BOT_TOKEN=8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A"
 
 echo Eliminando Webhook de Telegram...
 powershell -Command "$resp = Invoke-RestMethod -Uri 'https://api.telegram.org/bot%BOT_TOKEN%/deleteWebhook'; Write-Host 'Respuesta de Telegram:' ($resp | ConvertTo-Json)"

@@ -32,7 +32,7 @@ if sys.platform == "win32":
 # =====================================================================
 # CONFIGURACIÓN MAESTRA
 # =====================================================================
-BOT_TOKEN = "8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI"
+BOT_TOKEN = "8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A"
 AUTH_CHAT_ID = "1136933800"
 REPO = "JulioHVPalacios/mega-drive-cloner"
 API_BASE = f"https://api.telegram.org/bot{BOT_TOKEN}"

@@ -21,7 +21,7 @@ Para que tu bot de Telegram (`@VexorOmniBot`) funcione **perpetuamente**, día y
 ### Paso 3: Configurar las Variables de Entorno
 1. Regresa a la página principal de tu Worker y entra en la pestaña **Settings** (Configuración) ➔ **Variables and Secrets**.
 2. Añade las siguientes 3 variables:
-   - `TELEGRAM_BOT_TOKEN`: `8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI`
+   - `TELEGRAM_BOT_TOKEN`: `8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A`
    - `AUTHORIZED_CHAT_ID`: `1136933800`
    - `GITHUB_PAT`: (Tu token personal de GitHub)
    - *(Opcional)* `GEMINI_API_KEY`: (Tu clave de Google Gemini para IA sin censura)
@@ -33,7 +33,7 @@ Copia la URL que te da Cloudflare (ejemplo: `https://omnicloud-bot.tu-subdominio
 Ahora tienes 2 opciones sencillísimas para vincularlo:
 - **Método A:** Abre en tu PC el archivo `D:\mega-drive-cloner\configurar_webhook_nube_24_7.bat`, pega tu URL y presiona Enter.
 - **Método B:** Pega esto en tu navegador web:
-  `https://api.telegram.org/bot8775957501:AAEF5W3TgWUku6pMCqdFN9ouFpxMG4BJ7MI/setWebhook?url=https://omnicloud-bot.tu-subdominio.workers.dev`
+  `https://api.telegram.org/bot8775957501:AAGPitEyFmfa1aeFGZtKcCwsfbFSyDxQ35A/setWebhook?url=https://omnicloud-bot.tu-subdominio.workers.dev`
 
 ---
 
