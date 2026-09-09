@@ -231,6 +231,8 @@ jobs:
                   cmd = [
                       'python3', '-m', 'yt_dlp',
                       '--no-check-certificates',
+                      '--verbose',
+                      '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416;youtube:player_client=web',
                       '--concurrent-fragments', '16',
                       '--buffer-size', '64K',
                       '-f', 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[ext=mp4]/best',
@@ -243,7 +245,7 @@ jobs:
                       subprocess.run(cmd, check=True)
                   except Exception as e:
                       print(f"Aviso descarga estándar: {e}. Intentando fallback...")
-                      fallback_cmd = ['python3', '-m', 'yt_dlp', '--no-check-certificates', '-o', out_template, v_url]
+                      fallback_cmd = ['python3', '-m', 'yt_dlp', '--verbose', '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416;youtube:player_client=web', '--no-check-certificates', '-o', out_template, v_url]
                       subprocess.run(fallback_cmd, check=True)
 
                   downloaded_files = [os.path.join(tmp_dir, x) for x in os.listdir(tmp_dir) if os.path.isfile(os.path.join(tmp_dir, x))]
