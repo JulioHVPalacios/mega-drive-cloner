@@ -226,10 +226,12 @@ jobs:
               # Capa 3: PoToken provider (bgutil Docker HTTP server)
               # Capa 4: Cliente Mobile Web / Safari
               client_layers = [
-                  ['--extractor-args', 'youtube:player_client=android_vr,android'],
-                  ['--extractor-args', 'youtube:player_client=ios,tv_embedded'],
+                  ['--no-plugins', '--extractor-args', 'youtube:player_client=android_vr,android'],
+                  ['--no-plugins', '--extractor-args', 'youtube:player_client=android'],
+                  ['--no-plugins', '--extractor-args', 'youtube:player_client=ios,tv_embedded'],
                   ['--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416;youtube:player_client=mweb,web'],
-                  ['--extractor-args', 'youtube:player_client=mweb,web_safari']
+                  ['--no-plugins', '--extractor-args', 'youtube:player_client=mweb,web_safari'],
+                  ['--no-plugins']
               ]
 
               for idx_c, client_args in enumerate(client_layers, 1):
@@ -266,7 +268,7 @@ jobs:
                   cobalt_endpoints = ["https://api.cobalt.tools", "https://cobalt-api.kwiatekm.tokyo"]
                   for ep in cobalt_endpoints:
                       try:
-                          req_data = json.dumps({"url": v_url, "videoQuality": "720"}).encode('utf-8')
+                          req_data = json.dumps({"url": v_url}).encode('utf-8')
                           creq = urllib.request.Request(
                               ep,
                               data=req_data,
