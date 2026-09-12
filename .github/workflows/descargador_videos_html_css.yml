@@ -284,24 +284,27 @@ jobs:
 
           processed = 0
 
+          os.environ['PATH'] = '/home/runner/.deno/bin:' + os.environ.get('PATH', '')
+
           def try_download_video(v_title, v_url, out_template, tmp_dir):
               client_layers = [
-                  ['--no-plugins', '--extractor-args', 'youtube:player_client=android_vr,android'],
-                  ['--no-plugins', '--extractor-args', 'youtube:player_client=android'],
-                  ['--no-plugins', '--extractor-args', 'youtube:player_client=ios,tv_embedded'],
-                  ['--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416;youtube:player_client=mweb,web'],
-                  ['--no-plugins', '--extractor-args', 'youtube:player_client=mweb,web_safari'],
-                  ['--no-plugins']
+                  ['--extractor-args', 'youtube:player_client=web_embedded'],
+                  ['--extractor-args', 'youtube:player_client=android'],
+                  ['--extractor-args', 'youtube:player_client=web_embedded,android'],
+                  ['--extractor-args', 'youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416;youtube:player_client=web,web_embedded'],
+                  ['--extractor-args', 'youtube:player_client=ios,android'],
+                  []
               ]
 
               for idx_c, client_args in enumerate(client_layers, 1):
-                  print(f"-> Probando Estrategia de Extracción {idx_c}/{len(client_layers)}: {client_args}...")
+                  print(f"-> Probando Estrategia de Extracción {idx_c}/{len(client_layers)}: {client_args}...", flush=True)
                   cmd = [
                       'python3', '-m', 'yt_dlp',
                       '--no-check-certificates',
-                      '--buffer-size', '16M',
+                      '--retries', '10',
+                      '--fragment-retries', '10',
                       '--concurrent-fragments', '8',
-                      '-f', 'bestvideo[height<=1080]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best',
+                      '-f', 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best/18',
                       '--merge-output-format', 'mp4',
                       '-o', out_template
                   ] + client_args
@@ -312,40 +315,16 @@ jobs:
                   cmd.append(v_url)
 
                   try:
-                      res = subprocess.run(cmd, capture_output=False, timeout=3600)
+                      res = subprocess.run(cmd, capture_output=False, timeout=7200)
                       if res.returncode == 0:
-                          files = [os.path.join(tmp_dir, x) for x in os.listdir(tmp_dir) if os.path.isfile(os.path.join(tmp_dir, x))]
+                          files = [os.path.join(tmp_dir, x) for x in os.listdir(tmp_dir) if os.path.isfile(os.path.join(tmp_dir, x)) and not x.endswith('.part') and not x.endswith('.ytdl')]
                           if files:
-                              print(f"✅ Descarga exitosa con Estrategia {idx_c}!")
+                              print(f"✅ Descarga exitosa con Estrategia {idx_c}!", flush=True)
                               return True
+                      else:
+                          print(f"⚠️ Estrategia {idx_c} finalizó con código {res.returncode}", flush=True)
                   except Exception as err:
-                      print(f"Aviso en Estrategia {idx_c}: {err}")
-
-              print("-> Probando Capa de Respaldo Cobalt Engine API...")
-              try:
-                  cobalt_endpoints = ["https://api.cobalt.tools", "https://cobalt-api.kwiatekm.tokyo"]
-                  for ep in cobalt_endpoints:
-                      try:
-                          req_data = json.dumps({"url": v_url}).encode('utf-8')
-                          creq = urllib.request.Request(
-                              ep,
-                              data=req_data,
-                              headers={"Accept": "application/json", "Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
-                          )
-                          with urllib.request.urlopen(creq, timeout=30) as cresp:
-                              cdata = json.loads(cresp.read().decode('utf-8'))
-                              stream_url = cdata.get("url")
-                              if stream_url:
-                                  target_out = os.path.join(tmp_dir, f"{v_title}.mp4")
-                                  print(f"Enlace CDN directo obtenido vía Cobalt: {stream_url[:60]}...")
-                                  dl_cmd = ['aria2c', '-x', '16', '-s', '16', '-k', '1M', '-o', f"{v_title}.mp4", '-d', tmp_dir, stream_url]
-                                  subprocess.run(dl_cmd, check=True)
-                                  if os.path.exists(target_out):
-                                      return True
-                      except Exception as c_err:
-                          print(f"Aviso Cobalt {ep}: {c_err}")
-              except Exception as outer_c_err:
-                  print(f"Aviso general Cobalt: {outer_c_err}")
+                      print(f"Aviso en Estrategia {idx_c}: {err}", flush=True)
 
               return False
 

@@ -1101,6 +1101,15 @@ def handle_update(up):
 # BUCLE PRINCIPAL (LONG POLLING CON AUTO-RECUPERACIÓN BLINDADA)
 # =====================================================================
 def main():
+    import socket
+    global lock_sock
+    lock_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        lock_sock.bind(('127.0.0.1', 48999))
+    except socket.error:
+        print("[SINGLETON] Ya existe una instancia de OmniCloud Bot activa. Saliendo para evitar conflictos.", flush=True)
+        sys.exit(0)
+
     print("=" * 65, flush=True)
     print("  OMNICLOUD CORE 2.0 - TELEGRAM BOT POLLER ULTRA-BLINDADO", flush=True)
     print(f"  Bot: @VexorOmniBot", flush=True)
