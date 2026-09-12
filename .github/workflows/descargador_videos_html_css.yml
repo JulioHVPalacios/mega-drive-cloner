@@ -23,6 +23,9 @@ jobs:
     timeout-minutes: 360
 
     steps:
+      - name: 📥 Clonar Repositorio
+        uses: actions/checkout@v4
+
       - name: ⚡ Optimización de Red (Google BBR + TCP Tuning)
         run: |
           sudo sysctl -w net.core.default_qdisc=fq || true
@@ -69,6 +72,7 @@ jobs:
         run: |
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONFIG_DATA" > ~/.config/rclone/rclone.conf
+          sed -i '/root_folder_id/d' ~/.config/rclone/rclone.conf
           rclone listremotes
           if [ -n "$YT_COOKIES_DATA" ]; then
             echo "$YT_COOKIES_DATA" > /tmp/cookies.txt
@@ -99,16 +103,6 @@ jobs:
                   urllib.request.urlopen(req, timeout=15)
               except Exception as e:
                   print(f"Error enviando TG: {e}")
-
-          # Detectar automaticamente si midrive apunta directamente a la raiz o a la carpeta
-          base_drive_path = "midrive:"
-          chk_dir = subprocess.run(['rclone', 'lsd', 'midrive:01_FASE_1_FUNDAMENTOS_HTML5_Y_ESTRUCTURA_WEB'], capture_output=True)
-          if chk_dir.returncode == 0:
-              base_drive_path = "midrive:"
-              print("✅ Conexión directa a la raíz de BIBLIOTECA_MAESTRA detectada.")
-          else:
-              base_drive_path = "midrive:BIBLIOTECA_MAESTRA_HTML_CSS_CERO_A_AVANZADO"
-              print(f"ℹ️ Usando ruta relativa: {base_drive_path}")
 
           # Catálogo maestro de videos ordenados por fase de aprendizaje
           catalog = [
@@ -199,7 +193,7 @@ jobs:
                       {
                           "order": "01",
                           "author": "Dorian Designs",
-                          "title": "01_Dorian_Designs_Flexbox_Completo_Ejes_Alineacion_FlexGrow_Shrink_Basis",
+                          "title": "01_Dorian_Designs_Taller_Flexbox_Completo_Ejes_Alineacion_FlexGrow_Shrink_Basis",
                           "url": "https://www.youtube.com/watch?v=-pT3o1X3geQ"
                       },
                       {
@@ -258,7 +252,7 @@ jobs:
                   "fase_key": "FASE_6",
                   "fase_num": "06",
                   "fase_name": "06_PUENTE_AL_SIGUIENTE_NIVEL_BOOTCAMP_FULLSTACK_28H",
-                  "folder": "",
+                  "folder": "00_VIDEOS_CLASES_MAESTRAS",
                   "videos": [
                       {
                           "order": "01",
@@ -270,12 +264,14 @@ jobs:
               }
           ]
 
+          base_drive_path = "midrive:BIBLIOTECA_MAESTRA_HTML_CSS_CERO_A_AVANZADO"
+
           send_tg(
               "🚀 <b>INICIANDO MOTOR NUBE ANTIBLOQUEO (WARP + INNERTUBE + AZURE ➔ DRIVE)</b>\n\n"
-              "📚 <b>Biblioteca Maestra HTML5 & CSS</b>\n"
+              "📚 <b>Biblioteca Maestra HTML5 & CSS + FullStack</b>\n"
               "🛡️ <i>Túnel Cloudflare WARP activo (Bypass IP Datacenter)</i>\n"
               "⚡ <i>Velocidad de descarga en Azure: ~1.5 Gbps</i>\n"
-              "☁️ <b>Tu PC puede estar 100% apagada durante todo el proceso.</b>"
+              "☁️ <i>Tu PC puede estar 100% apagada durante todo el proceso.</i>"
           )
 
           cookies_path = "/tmp/cookies.txt"
@@ -316,7 +312,7 @@ jobs:
                   cmd.append(v_url)
 
                   try:
-                      res = subprocess.run(cmd, capture_output=False, timeout=7200)
+                      res = subprocess.run(cmd, capture_output=False, timeout=3600)
                       if res.returncode == 0:
                           files = [os.path.join(tmp_dir, x) for x in os.listdir(tmp_dir) if os.path.isfile(os.path.join(tmp_dir, x))]
                           if files:
@@ -366,7 +362,7 @@ jobs:
                   v_title = v['title']
                   v_url = v['url']
 
-                  # 1. Comprobar si ya existe en Google Drive con calidad verificada (> 50 MB)
+                  # 1. Comprobar si ya existe en Google Drive con tamaño válido (> 50 MB)
                   chk = subprocess.run(['rclone', 'size', '--json', f"{fase_dest}/{v_title}.mp4"], capture_output=True, text=True)
                   is_complete = False
                   if chk.returncode == 0:
@@ -378,7 +374,7 @@ jobs:
                           pass
 
                   if is_complete:
-                      print(f"[{processed}/{total_videos}] YA EN DRIVE: {v_title}. Omitiendo.")
+                      print(f"[{processed}/{total_videos}] YA EN DRIVE (COMPLETO): {v_title}. Omitiendo.")
                       send_tg(f"⏩ <b>[{processed}/{total_videos}] Ya en Drive</b>: <code>{v_title}</code>")
                       continue
 
@@ -443,8 +439,13 @@ jobs:
 
           send_tg(
               "🎉 <b>¡TRANSFERENCIA EN LA NUBE 100% COMPLETADA CON ÉXITO!</b>\n\n"
-              "Todos los videos maestros de HTML5 y CSS están disponibles en tu Google Drive dentro de sus fases correspondientes.\n\n"
+              "Todos los videos maestros de HTML5, CSS y FullStack están disponibles en tu Google Drive dentro de sus fases correspondientes.\n\n"
               "🏆 <i>Ejecutado con arquitectura antibloqueo Cloudflare WARP + InnerTube + PoToken en Microsoft Azure a 1.5 Gbps.</i>"
           )
           print("✅ ¡Pipeline de videos finalizado con éxito absoluto!")
           EOF
+
+      - name: 🤝 Sincronizar Permisos en Google Drive
+        if: always()
+        run: |
+          python3 share_drive_folder.py --folder BIBLIOTECA_MAESTRA_HTML_CSS_CERO_A_AVANZADO --email juliopalacios9814@gmail.com --role writer --remote midrive || true
