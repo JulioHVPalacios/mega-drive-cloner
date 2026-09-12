@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - 'TODAS_LAS_FASES'
+          - 'FASE_0'
           - 'FASE_1'
           - 'FASE_2'
           - 'FASE_3'
@@ -101,6 +102,20 @@ jobs:
           # Catálogo maestro de videos ordenados por fase de aprendizaje
           catalog = [
               {
+                  "fase_key": "FASE_0",
+                  "fase_num": "00",
+                  "fase_name": "00_CURSO_MAESTRO_INTEGRAL_HTML_Y_CSS_24H",
+                  "folder": "",
+                  "videos": [
+                      {
+                          "order": "01",
+                          "author": "Soy Dalto",
+                          "title": "01_Soy_Dalto_Curso_HTML_y_CSS_Desde_Cero_Completo_24H",
+                          "url": "https://www.youtube.com/watch?v=ELSm-G201Ls"
+                      }
+                  ]
+              },
+              {
                   "fase_key": "FASE_1",
                   "fase_num": "01",
                   "fase_name": "01_FASE_1_FUNDAMENTOS_HTML5_Y_ESTRUCTURA_WEB",
@@ -114,9 +129,21 @@ jobs:
                       },
                       {
                           "order": "02",
+                          "author": "Dorian Designs",
+                          "title": "02_Dorian_Designs_HTML5_Desde_Cero_Semantica_Formularios_Etiquetas",
+                          "url": "https://www.youtube.com/watch?v=vz4z0RLcAyk"
+                      },
+                      {
+                          "order": "03",
                           "author": "Midudev",
-                          "title": "02_Midudev_Curso_HTML_Desde_Cero_Semantica_Buenas_Practicas_SEO",
+                          "title": "03_Midudev_Curso_HTML_Desde_Cero_Semantica_Buenas_Practicas_SEO",
                           "url": "https://www.youtube.com/watch?v=3nYLTiY5skU"
+                      },
+                      {
+                          "order": "04",
+                          "author": "SEO en Español",
+                          "title": "04_SEO_en_Espanol_Guia_Profesional_Accesibilidad_Web_WCAG_AA_AAA",
+                          "url": "https://www.youtube.com/watch?v=j2NBcJjw1tQ"
                       }
                   ]
               },
@@ -140,8 +167,14 @@ jobs:
                       },
                       {
                           "order": "03",
+                          "author": "Dorian Designs",
+                          "title": "03_Dorian_Designs_CSS_Desde_Cero_Fundamentos_Cascada_Herencia_BoxModel",
+                          "url": "https://www.youtube.com/watch?v=N8V5JhasaSE"
+                      },
+                      {
+                          "order": "04",
                           "author": "Midudev",
-                          "title": "03_Midudev_Curso_CSS_Desde_Cero_Fundamentos_Practicos",
+                          "title": "04_Midudev_Curso_CSS_Desde_Cero_Fundamentos_Practicos",
                           "url": "https://www.youtube.com/watch?v=hrxjBqZWsb0"
                       }
                   ]
@@ -155,8 +188,8 @@ jobs:
                       {
                           "order": "01",
                           "author": "Dorian Designs",
-                          "title": "01_Dorian_Designs_Flexbox_Completo_Ejes_Alineacion_FlexGrow_Shrink_Basis",
-                          "url": "https://www.youtube.com/watch?v=PSwlAuRbv_A"
+                          "title": "01_Dorian_Designs_Taller_Flexbox_Completo_Ejes_Alineacion_FlexGrow_Shrink_Basis",
+                          "url": "https://www.youtube.com/watch?v=-pT3o1X3geQ"
                       },
                       {
                           "order": "02",
@@ -195,6 +228,18 @@ jobs:
                           "author": "Midudev",
                           "title": "02_Midudev_CSS_Avanzado_FrontEnd_Arquitectura_Moderna",
                           "url": "https://www.youtube.com/watch?v=TlJbu0BMLaY"
+                      },
+                      {
+                          "order": "03",
+                          "author": "Dorian Designs",
+                          "title": "03_Dorian_Designs_Taller_Metodologia_BEM_Arquitectura_CSS_Parte1",
+                          "url": "https://www.youtube.com/watch?v=BUYYMY3nS8s"
+                      },
+                      {
+                          "order": "04",
+                          "author": "Dorian Designs",
+                          "title": "04_Dorian_Designs_Taller_Metodologia_BEM_Arquitectura_CSS_Parte2",
+                          "url": "https://www.youtube.com/watch?v=14YRZWsGnCE"
                       }
                   ]
               }
@@ -221,10 +266,6 @@ jobs:
           processed = 0
 
           def try_download_video(v_title, v_url, out_template, tmp_dir):
-              # Capa 1: Android VR / Android nativo (Protobuf, sin desafío BotGuard web)
-              # Capa 2: iOS + TV Embedded (Especial para streams de 7 horas)
-              # Capa 3: PoToken provider (bgutil Docker HTTP server)
-              # Capa 4: Cliente Mobile Web / Safari
               client_layers = [
                   ['--no-plugins', '--extractor-args', 'youtube:player_client=android_vr,android'],
                   ['--no-plugins', '--extractor-args', 'youtube:player_client=android'],
@@ -252,9 +293,8 @@ jobs:
                   cmd.append(v_url)
 
                   try:
-                      res = subprocess.run(cmd, capture_output=False, timeout=1800)
+                      res = subprocess.run(cmd, capture_output=False, timeout=3600)
                       if res.returncode == 0:
-                          # Verificar si el archivo se generó
                           files = [os.path.join(tmp_dir, x) for x in os.listdir(tmp_dir) if os.path.isfile(os.path.join(tmp_dir, x))]
                           if files:
                               print(f"✅ Descarga exitosa con Estrategia {idx_c}!")
@@ -262,7 +302,6 @@ jobs:
                   except Exception as err:
                       print(f"Aviso en Estrategia {idx_c}: {err}")
 
-              # Capa 5: Fallback Motor Abierto Cobalt API (Resuelve streams CDN directos)
               print("-> Probando Capa de Respaldo Cobalt Engine API...")
               try:
                   cobalt_endpoints = ["https://api.cobalt.tools", "https://cobalt-api.kwiatekm.tokyo"]
@@ -295,8 +334,9 @@ jobs:
               if phase_sel != 'TODAS_LAS_FASES' and phase_sel != f['fase_key']:
                   continue
 
-              fase_dest = f"{base_drive_path}/{f['fase_name']}/{f['folder']}"
-              send_tg(f"📂 <b>Comenzando Fase {f['fase_num']}: {f['fase_name'].split('_', 2)[-1].replace('_', ' ')}</b>\n🎯 Destino: <code>{f['fase_name']}/{f['folder']}</code>")
+              fase_dest = f"{base_drive_path}/{f['fase_name']}/{f['folder']}" if f.get('folder') else f"{base_drive_path}/{f['fase_name']}"
+              folder_disp = f"/{f['folder']}" if f.get('folder') else ""
+              send_tg(f"📂 <b>Comenzando Fase {f['fase_num']}: {f['fase_name'].split('_', 2)[-1].replace('_', ' ')}</b>\n🎯 Destino: <code>{f['fase_name']}{folder_disp}</code>")
 
               for v in f['videos']:
                   processed += 1
@@ -337,7 +377,7 @@ jobs:
                       f"⏳ <b>[{processed}/{total_videos}] Descargando en la nube Azure...</b>\n\n"
                       f"🎬 <b>{v_title}</b>\n"
                       f"👤 Instructor: {v['author']}\n"
-                      f"📁 Carpeta: <code>{f['fase_name']}</code>"
+                      f"📁 Carpeta: <code>{f['fase_name']}{folder_disp}</code>"
                   )
 
                   success = try_download_video(v_title, v_url, out_template, tmp_dir)
@@ -372,7 +412,7 @@ jobs:
                       f"🎬 <b>{v['title']}</b>\n"
                       f"👤 Autor: {v['author']}\n"
                       f"📦 Tamaño: <b>{file_size_mb:.1f} MB</b>\n"
-                      f"📁 Carpeta: <code>{f['fase_name']}/{f['folder']}</code>"
+                      f"📁 Carpeta: <code>{f['fase_name']}{folder_disp}</code>"
                   )
 
                   for fl in downloaded_files:
