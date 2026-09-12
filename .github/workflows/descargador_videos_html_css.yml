@@ -15,6 +15,7 @@ on:
           - 'FASE_2'
           - 'FASE_3'
           - 'FASE_4'
+          - 'FASE_6'
 
 jobs:
   transferir_videos_nube:
@@ -98,6 +99,16 @@ jobs:
                   urllib.request.urlopen(req, timeout=15)
               except Exception as e:
                   print(f"Error enviando TG: {e}")
+
+          # Detectar automaticamente si midrive apunta directamente a la raiz o a la carpeta
+          base_drive_path = "midrive:"
+          chk_dir = subprocess.run(['rclone', 'lsd', 'midrive:01_FASE_1_FUNDAMENTOS_HTML5_Y_ESTRUCTURA_WEB'], capture_output=True)
+          if chk_dir.returncode == 0:
+              base_drive_path = "midrive:"
+              print("✅ Conexión directa a la raíz de BIBLIOTECA_MAESTRA detectada.")
+          else:
+              base_drive_path = "midrive:BIBLIOTECA_MAESTRA_HTML_CSS_CERO_A_AVANZADO"
+              print(f"ℹ️ Usando ruta relativa: {base_drive_path}")
 
           # Catálogo maestro de videos ordenados por fase de aprendizaje
           catalog = [
@@ -188,7 +199,7 @@ jobs:
                       {
                           "order": "01",
                           "author": "Dorian Designs",
-                          "title": "01_Dorian_Designs_Taller_Flexbox_Completo_Ejes_Alineacion_FlexGrow_Shrink_Basis",
+                          "title": "01_Dorian_Designs_Flexbox_Completo_Ejes_Alineacion_FlexGrow_Shrink_Basis",
                           "url": "https://www.youtube.com/watch?v=-pT3o1X3geQ"
                       },
                       {
@@ -242,17 +253,29 @@ jobs:
                           "url": "https://www.youtube.com/watch?v=14YRZWsGnCE"
                       }
                   ]
+              },
+              {
+                  "fase_key": "FASE_6",
+                  "fase_num": "06",
+                  "fase_name": "06_PUENTE_AL_SIGUIENTE_NIVEL_BOOTCAMP_FULLSTACK_28H",
+                  "folder": "",
+                  "videos": [
+                      {
+                          "order": "01",
+                          "author": "Midudev",
+                          "title": "01_Midudev_Bootcamp_FullStack_28H_JavaScript_React_Node_TypeScript_Docker",
+                          "url": "https://www.youtube.com/watch?v=mXpWhmJXV0o"
+                      }
+                  ]
               }
           ]
-
-          base_drive_path = "midrive:BIBLIOTECA_MAESTRA_HTML_CSS_CERO_A_AVANZADO"
 
           send_tg(
               "🚀 <b>INICIANDO MOTOR NUBE ANTIBLOQUEO (WARP + INNERTUBE + AZURE ➔ DRIVE)</b>\n\n"
               "📚 <b>Biblioteca Maestra HTML5 & CSS</b>\n"
               "🛡️ <i>Túnel Cloudflare WARP activo (Bypass IP Datacenter)</i>\n"
               "⚡ <i>Velocidad de descarga en Azure: ~1.5 Gbps</i>\n"
-              "☁️ <i>Tu PC puede estar 100% apagada durante todo el proceso.</i>"
+              "☁️ <b>Tu PC puede estar 100% apagada durante todo el proceso.</b>"
           )
 
           cookies_path = "/tmp/cookies.txt"
@@ -293,7 +316,7 @@ jobs:
                   cmd.append(v_url)
 
                   try:
-                      res = subprocess.run(cmd, capture_output=False, timeout=3600)
+                      res = subprocess.run(cmd, capture_output=False, timeout=7200)
                       if res.returncode == 0:
                           files = [os.path.join(tmp_dir, x) for x in os.listdir(tmp_dir) if os.path.isfile(os.path.join(tmp_dir, x))]
                           if files:
@@ -343,21 +366,20 @@ jobs:
                   v_title = v['title']
                   v_url = v['url']
 
-                  # 1. Comprobar si ya existe en Google Drive con calidad 1080p verificada
+                  # 1. Comprobar si ya existe en Google Drive con calidad verificada (> 50 MB)
                   chk = subprocess.run(['rclone', 'size', '--json', f"{fase_dest}/{v_title}.mp4"], capture_output=True, text=True)
                   is_complete = False
                   if chk.returncode == 0:
                       try:
                           sz_data = json.loads(chk.stdout)
-                          # Solo se omite si el archivo pesa mas de 400MB (1080p real verificado)
-                          if sz_data.get('bytes', 0) > 400 * 1024 * 1024:
+                          if sz_data.get('bytes', 0) > 50 * 1024 * 1024:
                               is_complete = True
                       except Exception:
                           pass
 
                   if is_complete:
-                      print(f"[{processed}/{total_videos}] YA EN DRIVE (1080p COMPLETO): {v_title}. Omitiendo.")
-                      send_tg(f"⏩ <b>[{processed}/{total_videos}] Ya en Drive (1080p)</b>: <code>{v_title}</code>")
+                      print(f"[{processed}/{total_videos}] YA EN DRIVE: {v_title}. Omitiendo.")
+                      send_tg(f"⏩ <b>[{processed}/{total_videos}] Ya en Drive</b>: <code>{v_title}</code>")
                       continue
 
                   tmp_dir = "/tmp/video_work"
